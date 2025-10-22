@@ -24,13 +24,19 @@ import pytz
 # uncomment sys.
 # request more time, but should be taking less time to execute the code
 
+# Will remove/improve comments above later??
+
+# Note: I want to make this code more cleaner by adding docstrings, explaining functions and what they do,
+# and going step by step what we do to allow the code to print the simulated images
+
 """
 
-- Don't think this file is right, but I fixed everything that was undefined lol
-- Need to figure out how to rewrite process_stars into the draw_stars function
-- Also need to learn how to connect draw_stars function with j_location and assign_star 
-  functions in order to draw the stars to their correct assigned process
-- More with this later
+Writing clean description/summary later of what this code does and how it works to create a simulated image 
+from a Besancom model. 
+
+The code is executing and printing out an image, but the stars are being drawn
+only at the bottom of the image the last two tries. Did a little fix in assign_stars
+to see if that will do anything. 
 
 """
 
@@ -172,10 +178,12 @@ print('returned image center x, y!')
 sys.stdout.flush()
 
 def assign_star(x, y):
-    """Assigning row of 8x4 processes to draw out srars"""
-    x_blue = np.clip(x // (nside // process_h), min = 0, max = 4088)
-    y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
-    task = y_blue * process_h + x_blue
+    """Assigning row of 8x4 processes to draw out stars"""
+    # x_blue = np.clip(x // (nside // process_h), min = 0, max = 4088)
+    # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
+    x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
+    y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
+    task = y_blue_idx * process_h + x_blue_idx # fixed this section, will see if this works
     return task
 print('returned task for assign_star!')
 sys.stdout.flush()
@@ -200,12 +208,10 @@ def draw_stars(j, cat, wcs):
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad) 
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
-        for i in range(10000):
+        for i in range(cat.nobjects): # do I add cat.nobjects here? Or do I remove this completely?
             if task_array[i] != j:
                 continue
             if not is_in_circle[i]:
-                continue
-            if i != 9949:
                 continue
             
             # First, calculating position
@@ -232,13 +238,14 @@ def draw_stars(j, cat, wcs):
             flux = norm*fluxUnnorm
             nPhotQ = np.trapezoid(flux*effAreaTable['F158']*u.m**2*wav*tExp/(const.h * const.c), x=wav)
             nPhotQ = nPhotQ.decompose()
-            nPhot = nPhotQ.value 
+            nPhot = nPhotQ.value # fixed bug from this line
             if not np.isfinite(nPhot):
                 print(f"!! WARNING (j={j}, i={i}): Invalid flux calculated: {nPhot}", flush=True)
                 continue # Skip this star
             if not mybounds.includes(imageCenter2):
                 print(f"!! WARNING (j={j}, i={i}): Star position {imageCenter2} is outside bounds {mybounds}", flush=True)
                 continue # Skip this star
+                # to this line
             st_model = galsim.DeltaFunction(flux=nPhot)
             source = galsim.Convolve([interp_psf,st_model], gsparams=big_fft_params) 
             print('read flux calculations per star!', i, j)
