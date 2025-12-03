@@ -1,0 +1,8 @@
+# config.yaml
+raCen: 268.055873          # Right Ascension center in degrees (should be the same as the one in besancon)
+decCen: -28.860960        # Declination center in degrees (should be the same as the one in besancon)
+starCat: besancon_GB.fits  # Path to star catalog
+SCA: 14              # SCA Number
+randomPos: false    # Use random positions for stars
+blackBody: true    # Use blackbody approximation for stars
+outFile: myTestPolyNov6.fits #Name of the file to save the image to 
