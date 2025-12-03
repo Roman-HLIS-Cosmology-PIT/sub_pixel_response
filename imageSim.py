@@ -19,32 +19,32 @@ from scipy.special import legendre
 import datetime
 import pytz
 
-# in SBATCH file, added mem=100G in there 
-# if it doesn't work or make a difference, take out later
-# uncomment sys.
-# request more time, but should be taking less time to execute the code
-
-# Will remove/improve comments above later??
-
-# Note: I want to make this code more cleaner by adding docstrings, explaining functions and what they do,
-# and going step by step what we do to allow the code to print the simulated images
-
 """
+Roman Telescope Star Field Image Simulator
+-----------------------------------------
 
-Writing clean description/summary later of what this code does and how it works to create a simulated image 
-from a Besancom model. 
+This script generates a simulated Roman Space Telescope image in the H158 band using a star catalog 
+from an imputed Besancon model and a polynomial PSF FITS cube. The Besancon model uses stellar coordinates 
+from the Galactic Buldge Time Domain Survey (GBTDS). For this image simulator, we are using SCA 14 from the 
+Roman telescope. The stars are drawn in parallel using an 8x4 toling pattern across the image.
 
-The code is executing and printing out an image, but the stars are being drawn
-only at the bottom of the image the last two tries. Did a little fix in assign_stars
-to see if that will do anything. 
-
+Example YAML Configuration
+-------------------------
+raCen: 268.055873               # Pointing center RA (degrees)
+decCen: -28.860960              # Pointing center Dec (degrees)
+starCat: besancon_GB.fits       # Input FITS star catalog file with RA/Dec and H-Band magnitudes
+SCA: 14                         # Detector used (1-18)
+randomPos: false                # If true, it ignores the set RA/Dec values and randomly places stars on image
+blackBody: true                 # Uses the black body flux model
+outFile: "simulated.fits"       # Output file for simulated Roman star image
 """
 
 def print_report(s):
+    """Print message with UTC timestamp (debug helper)."""
     print(s, datetime.datetime.now(pytz.timezone("UTC")).strftime("%Y%m%d%H%M%S%f")) # favorite format for time
     sys.stdout.flush()
 
-# Global data
+# Global data and constants
 in_psf_oversam = 6
 fNuRef = 3.631e-23*(u.W/u.m**2)/u.Hz  # W/m^2/Hz
 process_h = 4
@@ -55,6 +55,7 @@ print('read global data!')
 sys.stdout.flush()
 
 def transformPos(x, y, oversam=6):
+    """Convert detector pixel coordinates into oversampled pixel space."""
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
     return (X, Y)
@@ -136,15 +137,16 @@ print('returned LPolyArr!')
 sys.stdout.flush()
 
 def compute_poly(inpsf_cube, pixloc, order=1):
+    """Compute PSF from polynomial PSF cube at given detector pixel location."""
     lpoly = LPolyArr(order, (pixloc[0]-2043.5)/2044., (pixloc[1]-2043.5)/2044.)    
     this_psf = smooth_and_pad(np.einsum('a,aij->ij', lpoly, inpsf_cube), tophatwidth=in_psf_oversam)/64
-
     return this_psf
 print('returned this_psf and read LPolyArr function!')
 sys.stdout.flush()
 
-#print(os.getenv('SLURM_NTASKS'))
-#print(os.getenv('SLURM_CPUS_PER_TASK'))
+# More debugging prints
+# print(os.getenv('SLURM_NTASKS'))
+# print(os.getenv('SLURM_CPUS_PER_TASK'))
 ncpu = int(os.getenv('SLURM_NTASKS'))
 print(ncpu)
 sys.stdout.flush()
@@ -166,11 +168,13 @@ print('read makeParser and returned parser!')
 sys.stdout.flush()
 
 def sedBB(w, T):
+    """Return blackbody flux density at wavelength and temperature."""
     return ((8*np.pi*const.h*const.c**2/w**5)*1/(np.exp(const.h*const.c/(w*const.k_B*T))-1)).decompose()
 print('retuned value and read sedBB function!')
 sys.stdout.flush()
 
 def convert_pos(ra, dec, wcs):
+    """Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
     worldCenter = galsim.CelestialCoord(ra=ra, dec=dec) 
     imageCenter = wcs.posToImage(worldCenter)
     return (imageCenter.x, imageCenter.y)
@@ -190,7 +194,7 @@ sys.stdout.flush()
 
 # j for given process number
 def j_location(process, x_padding=0, y_padding=0):
-    # padding is in subpixel coordinates
+    """Get tile bounding region in oversampled pixel coordinates."""
     xmin_j = (nside // process_h * (process % process_h)) * in_psf_oversam
     ymin_j = (nside // process_v * (process // process_h)) * in_psf_oversam
     xmax_j = (in_psf_oversam * nside // process_h) + xmin_j - 1
@@ -200,9 +204,43 @@ def j_location(process, x_padding=0, y_padding=0):
 print('read j_location and returned process_bounds!')
 sys.stdout.flush()
 
-# draw_stars function was fixed and this looks good! :)
-# added try statement, doesn't seem to be working for some reason 
+"""def downSample(d_x, d_y, d_xy, d_x2, d_y2, oversampledSim):
+    """"""
+    return downsampImage"""
+
+# Next, write a function that computes the expectation value for each component/term
+def computeExpVal(oversam_pix_grid, xPower, yPower):
+    x, y = oversam_pix_grid[:, 0], oversam_pix_grid[:, 1]
+    eval_x = np.power(x, xPower)
+    eval_y = np.power(y, yPower)
+    return np.sum(eval_x, eval_y)
+    print(np.sum(eval_x, eval_y))
+
+oversam = 6
+x_array = np.linspace(-0.5+1/(2*oversam), 0.5-1/(2*oversam), oversam)
+y_array = np.linspace(-0.5+1/(2*oversam), 0.5-1/(2*oversam), oversam)
+meshGrid = np.meshgrid(x_array,y_array)
+#Call this function here
+print(computeExpVal(meshGrid, 1, 0)) 
+#should return 0
+
+def Eqn(matrix, soln):
+    """"""
+    return (matrix**-1 * soln)
+
+# def OffsetPixel([pixeloffsets], xgrid, ygrid):
+    """mat = expectVal(x, 1, 0)
+       solveEqn(mat, ..., pixeloffsets)
+       gives a, b, c, d, e, f
+       compute and return wi: the weights
+       also try to return expectation values later
+       utilizing function above
+       may need to write another function here"""
+
+# Delete functions above later, this needs to be done in separate .py file
+     
 def draw_stars(j, cat, wcs):
+    """Draw stars for tile index j into a temporary image section."""
     with fits.open('/users/PAS2340/karadiludovico/psf_poly.fits') as inpsf_file:
         psf_data = np.copy(inpsf_file[scaNum].data[:, :, :]) 
     try:
@@ -238,14 +276,14 @@ def draw_stars(j, cat, wcs):
             flux = norm*fluxUnnorm
             nPhotQ = np.trapezoid(flux*effAreaTable['F158']*u.m**2*wav*tExp/(const.h * const.c), x=wav)
             nPhotQ = nPhotQ.decompose()
-            nPhot = nPhotQ.value # fixed bug from this line
+            nPhot = nPhotQ.value 
             if not np.isfinite(nPhot):
                 print(f"!! WARNING (j={j}, i={i}): Invalid flux calculated: {nPhot}", flush=True)
                 continue # Skip this star
             if not mybounds.includes(imageCenter2):
                 print(f"!! WARNING (j={j}, i={i}): Star position {imageCenter2} is outside bounds {mybounds}", flush=True)
                 continue # Skip this star
-                # to this line
+            
             st_model = galsim.DeltaFunction(flux=nPhot)
             source = galsim.Convolve([interp_psf,st_model], gsparams=big_fft_params) 
             print('read flux calculations per star!', i, j)
@@ -264,98 +302,7 @@ def draw_stars(j, cat, wcs):
 print('read through draw_stars function!')
 sys.stdout.flush()
 
-# need to figure out how to write config yaml stuff for randomPos and blackBody later on 
-# once this code works and executes well lol
-
-# don't need this function to use for the code anymore, didn't call it anywhere else    
-"""     
-def process_stars(j, nstar, config, cat, is_in_circle, mywcs, mybounds, scaNum, transmissionCurve, 
-                roman_bandpasses, tExp, geomArea):
-    Process single star (to be run in parallel)
-    inpsf_file = fits.open('/users/PAS2340/karadiludovico/psf_poly.fits') 
-    temp_image = galsim.Image(bounds=mybounds, wcs=mywcs) 
-    temp_image2 = galsim.Image(ncol=24528, nrow=24528, scale=1) 
-    ncpu = int(os.getenv('SLURM_NTASKS')) 
-    print('read inpsf_file, temp images, and ncpu')
-    # sys.stdout.flush()
-    for i in range(j, nstar, ncpu): # replacing this section, change location of it? 
-        # check if star is in bounds
-        if not is_in_circle[i]:
-            continue 
-        print('read if statement for i in range and continued!')
-        # sys.stdout.flush()
-        # Calculate flux
-        if config['blackBody']:
-            mag = cat.get(i, 'H')
-            wav = np.arange(0.400, 2.600, 0.001) * u.um
-            fluxUnnorm = sedBB(wav, 5000*u.K)
-            fLambdaRef = fNuRef * const.c / wav**2
-            norm = 10**(-0.4*mag) * np.trapezoid(fLambdaRef*transmissionCurve*wav, x=wav)/np.trapezoid(fluxUnnorm*transmissionCurve*wav, x=wav)
-            flux = norm*fluxUnnorm
-            nPhotQ = np.trapezoid(flux*effAreaTable['F158']*u.m**2*wav*tExp/(const.h * const.c), x=wav)
-            nPhotQ = nPhotQ.decompose()
-            nPhot = nPhotQ.value 
-            print('read if statement for if config blackBody!')
-            # sys.stdout.flush()    
-        else:
-            mag = cat.get(i, 'H')
-            nPhot = 300000  # Need to update as a function of SED for a given star
-            # nPhot is placeholder and should be calculated properly
-            print('read else statement for config blackBody!')
-            # sys.stdout.flush()
-
-        # Calculate position
-        if not config['randomPos']:
-            degrees = galsim.AngleUnit(np.pi/180)
-            ra = cat.get(i, 'RAJ2000')*degrees
-            dec = cat.get(i, 'DECJ2000')*degrees
-            print('read not config randomPos!')
-            # sys.stdout.flush()
-
-            wcs = mywcs
-            worldCenter = galsim.CelestialCoord(ra=ra, dec=dec) 
-            imageCenter = wcs.posToImage(worldCenter)
-            
-            if (imageCenter.x > mybounds.getXMax() or 
-                imageCenter.y > mybounds.getYMax() or 
-                imageCenter.x < mybounds.getXMin() or imageCenter.y < mybounds.getYMin()):
-                continue  # Skip if out of bounds
-            print('read if statement for image center and continued!')
-            # sys.stdout.flush()
-            new_image_center = transformPos(imageCenter.x, imageCenter.y)
-            imageCenter2 = galsim.PositionD(x = new_image_center[0], y = new_image_center[1])
-            print('read new image center and image center 2!')
-            # sys.stdout.flush()
-            # pos_SCA = galsim.PositionD(x=imageCenter.x-(mybounds.getXMax()/2.), y=imageCenter.y-(mybounds.getYMax()/2.))
-            psf_data = inpsf_file[scaNum].data[:, :, :] 
-            this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1])) 
-            psf = galsim.Image(this_psf) 
-            print('read psf_data, this_psf, and psf!')
-            # sys.stdout.flush()
-            # psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs, wavelength=roman_bandpasses['H158'])
-            interp_psf = galsim.InterpolatedImage(psf, x_interpolant = 'lanczos32', scale=1)#0.11/in_psf_oversam) 
-            st_model = galsim.DeltaFunction(flux=nPhot)
-            source = galsim.Convolve([interp_psf,st_model], gsparams=big_fft_params) 
-            print('read interp_psf, st_model, and source!')
-            # sys.stdout.flush()
-        else:
-            x = np.random.random_sample()*mybounds.getXMax()
-            y = np.random.random_sample()*mybounds.getYMax()
-            imageCenter2 = galsim.PositionD(x=x, y=y)
-            pos_SCA = galsim.PositionD(x=x-(mybounds.getXMax()/2.), y=y-(mybounds.getYMax()/2.))
-            psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs, wavelength=roman_bandpasses['H158'])
-            source = psf*nPhot
-            print('read else statement for not config randomPos!')
-            # sys.stdout.flush()
-
-        source.drawImage(temp_image2, method='no_pixel', center=imageCenter2, add_to_image = True) 
-        print("Star Drawn!", i)
-        print("Process Complete!", j)
-    return temp_image2
-    print('returned temp_image 2 sucessfully!')
-    # sys.stdout.flush()   
-"""   
-
+# Main Execution
 if __name__ == '__main__':
     # Parse command line to get config file path
     parser = makeParser()
@@ -406,6 +353,7 @@ if __name__ == '__main__':
         print('read else statement for is_in_circle!')
         sys.stdout.flush()
                
+    # Telescope exposure/SCA           
     scaNum = int(config['SCA'])
     if scaNum < 10:
         effAreaTable = aio.ascii.read('Roman_effarea_tables_20240327/Roman_effarea_v8_SCA0{}_20240301.ecsv'.format(scaNum))
@@ -435,6 +383,7 @@ if __name__ == '__main__':
     print('read roman_bandpasses and big_fft_params!')
     sys.stdout.flush()
 
+    # Tile/section assignment per star
     task_array = np.zeros(cat.nobjects, dtype=np.int32)
 
     for i in range(cat.nobjects):
@@ -443,8 +392,7 @@ if __name__ == '__main__':
         dec = cat.get(i, 'DECJ2000')*degrees
         x, y = convert_pos(ra, dec, mywcs)
         j = assign_star(x, y) 
-        task_array[i] = j # changed this line from cat.nobjects[i] = j
-        # at line above, there was a mistake where 'int' object does not support item assignemnt
+        task_array[i] = j 
     
     # Prepare arguments for parallel processing
     multiprocess_stars = functools.partial(draw_stars, 
@@ -456,6 +404,7 @@ if __name__ == '__main__':
     # Determine number of processes to use
     num_processes = min(ncpu, cat.nobjects)
 
+    # Printing number of processes to see if multiprocessing code above works
     print(num_processes)
     sys.stdout.flush()
     
