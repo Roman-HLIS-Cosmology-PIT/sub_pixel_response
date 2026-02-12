@@ -12,3 +12,13 @@ from a set of images
 - Validate that this pipeline works using our simulated images. 
 - Coordinating with the Calibration Working Group and SOC representatives
 on optimizing the observations and dithering plan, as well as analysis methods
+
+# Running the code:
+`imageSim.py` contains the code to make oversampled/high resolution Roman images. An example 
+configuration file is provided in `example_test.yaml`. 
+
+Post processing functions live in `processImage.py`. In your local repository, you can import functions 
+```
+from processImage import compute_pixel_weights
+```
+and call it as needed. 
