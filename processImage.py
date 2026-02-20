@@ -97,7 +97,7 @@ def processImage(oversampledImage, offsets, imageSize = 4096, oversample = 6):
   #First need to reshape image into (4096, 4096, 6, 6) 
   reshapedImage = oversampledImage.reshape(imageSize, oversample, imageSize, oversample).transpose(0, 2, 1, 3)
 
-  weights = compute_pixel_weights(offsets)
+  weights = compute_pixel_weights(offsets, oversam = oversample)
   #should return a set of weights for each pixel (4088*4088*6*6)
 
   downsampledImage = np.sum(reshapedImage*weights, axis = (2,3))
