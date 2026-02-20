@@ -41,20 +41,20 @@ def compute_pixel_weights(offsets, oversam = 6):
       [Ey2, Exy2, Ey3, Exy3, Ex2y2, Ey4]
       ])
 
-  # offsets is (4088, 4088, 6). We want to solve M * coeffs = deltas for each (4088, 4088) pixel.
-  # Reshape offsets to (N, 6) where N = 4088 * 4088.
-  offsets_flat = offsets.reshape(-1, 6) # Shape becomes (4088*4088, 6)
+  # offsets is (4096, 4096, 6). We want to solve M * coeffs = deltas for each (4096, 4096) pixel.
+  # Reshape offsets to (N, 6) where N = 4096 * 4096.
+  offsets_flat = offsets.reshape(-1, 6) # Shape becomes (4096*4096, 6)
 
   # For np.linalg.solve(A, B) where A is (M,M) and B is (M,K)
-  # we need to transpose offsets_flat to (6, 4088*4088)
-  # so that M=6 and K=4088*4088
+  # we need to transpose offsets_flat to (6, 4096*4096)
+  # so that M=6 and K=4096*4096
   start = time.time()
-  coeff_flat_solved = np.linalg.solve(M, offsets_flat.T) # Result shape (6, 4088*4088)
+  coeff_flat_solved = np.linalg.solve(M, offsets_flat.T) # Result shape (6, 4096*4096)
   end = time.time()
   print("Time taken to solve equations = ", (end-start))
 
-  # Transpose back and reshape to original (4088, 4088, 6) structure for coefficients
-  coeffArray = coeff_flat_solved.T.reshape(offsets.shape[0], offsets.shape[1], 6) # Shape (4088, 4088, 6)
+  # Transpose back and reshape to original (4096, 4096, 6) structure for coefficients
+  coeffArray = coeff_flat_solved.T.reshape(offsets.shape[0], offsets.shape[1], 6) # Shape (4096, 4096, 6)
 
   start = time.time()
   
@@ -69,9 +69,9 @@ def compute_pixel_weights(offsets, oversam = 6):
   ], axis=-1) # Shape (oversam, oversam, 6) -> (6, 6, 6)
 
   # Use np.einsum for efficient calculation of the weighted sum.
-  # 'ijk' refers to coeffArray (4088, 4088, 6) (pixel_row, pixel_col, coefficient_type)
+  # 'ijk' refers to coeffArray (4096, 4096, 6) (pixel_row, pixel_col, coefficient_type)
   # 'lmk' refers to sub_pixel_basis (6, 6, 6) (sub_pixel_row, sub_pixel_col, coefficient_type)
-  # The result 'ijlm' will be (4088, 4088, 6, 6) (pixel_row, pixel_col, sub_pixel_row, sub_pixel_col)
+  # The result 'ijlm' will be (4096, 4096, 6, 6) (pixel_row, pixel_col, sub_pixel_row, sub_pixel_col)
   weighted_sum_terms = np.einsum('ijk, lmk -> ijlm', coeffArray, sub_pixel_basis)
 
   # Add the constant term '1'
@@ -80,23 +80,33 @@ def compute_pixel_weights(offsets, oversam = 6):
   end = time.time()
   print("Time to build weight array = ", (end-start))
 
-  return weight_array # This will be (4088, 4088, 6, 6) as desired
+  return weight_array # This will be (4096, 4096, 6, 6) as desired
 
-def processImage(oversampledImage, offsets):
-  #oversampledImage is a (6*4088)^2 image
-  #offsets refer to a (4088*4088*6) array that contains deltax, deltay etc for each pixel
-  #want to return a single 4088*4088 image/array
+def generateOffsetArray(offsets, imageSize = 4096, oversample = 6):
+  #This function will copy a single array of offsets into 4096*4096*6 array to be used for testing.
+  offsetArray = np.zeros((imageSize, imageSize, oversample))
+  offsetArray[:imageSize, imageSize, :] = offsets
+  return offsetArray
+
+
+def processImage(oversampledImage, offsets, imageSize = 4096, oversample = 6):
+  #oversampledImage is a (6*4096)^2 image
+  #offsets refer to a (4096*4096*6) array that contains deltax, deltay etc for each pixel
+  #want to return a single 4096*4096 image/array
+
+  #First need to reshape image into (4096, 4096, 6, 6) 
+  reshapedImage = oversampledImage.reshape(imageSize, oversample, imageSize, oversample).transpose(0, 2, 1, 3)
 
   weights = compute_pixel_weights(offsets)
   #should return a set of weights for each pixel (4088*4088*6*6)
 
-  downsampledImage = np.sum(oversampledImage*weights, axis = (2,3))
+  downsampledImage = np.sum(reshapedImage*weights, axis = (2,3))
 
   return downsampledImage
 
 if __name__ == "__main__":
   #Tests the function with a simple test
-  offsets = np.zeros((4088,4088,6))
+  offsets = np.zeros((4096,4096,6))
   offsets[0,0,:] = np.array([1, 0, 0, 0, 1/12 * (1-1/36), 1/12 * (1-1/36)])
   print("Passing in offset array", offsets[0,0,:])
   blah = compute_pixel_weights(offsets)
