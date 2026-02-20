@@ -85,7 +85,7 @@ def compute_pixel_weights(offsets, oversam = 6):
 def generateOffsetArray(offsets, imageSize = 4096, oversample = 6):
   #This function will copy a single array of offsets into 4096*4096*6 array to be used for testing.
   offsetArray = np.zeros((imageSize, imageSize, oversample))
-  offsetArray[:imageSize, imageSize, :] = offsets
+  offsetArray[:imageSize, :imageSize, :] = offsets
   return offsetArray
 
 
