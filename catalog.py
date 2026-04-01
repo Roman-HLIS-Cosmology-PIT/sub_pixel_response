@@ -1,4 +1,7 @@
 import numpy as np
+from astropy.io import fits
+import pandas as pd
+
 def read_catalog(file_path, file_type=None):
     """
     Read a star catalog and return RA, Dec, and H-band magnitude.
