@@ -159,6 +159,45 @@ def read_config(config_file):
 print('returned config and read read_config function!')
 sys.stdout.flush()
 
+def read_catalog(file_path, file_type=None):
+    """
+    Read a star catalog and return RA, Dec, and H-band magnitude.
+    """
+
+    # Determining file type
+    if file_type is None:
+        if file_path.lower().endswith('.fits'):
+            file_type = 'fits'
+        else:
+            file_type = 'ascii'
+
+    # FITS catalogs (Besancon)
+    if file_type == 'fits':
+        with fits.open(file_path) as hdul:
+            data = hdul[1].data
+            ra = data['RA']
+            dec = data['DEC']
+            mag_H = data['Hmag']
+
+    # ASCII catalogs (Anderson)
+    elif file_type == 'ascii':
+        try:
+            df = pd.read_csv(file_path)
+        except:
+            df = pd.read_table(file_path, delim_whitespace=True, comment='#')
+
+        ra = df['RA']
+        dec = df['Dec']   
+    
+
+        # Using Anderson H-band column
+        mag_H = df['m160_u']
+
+    else:
+        raise ValueError("Unsupported file type")
+
+    return {'ra': ra, 'dec': dec, 'mag_H': mag_H}
+
 def makeParser():
     """Create argument parser"""
     parser = argparse.ArgumentParser(description="Star Simulation Configuration")
@@ -254,8 +293,8 @@ def draw_stars(j, cat, wcs):
             
             # First, calculating position
             degrees = galsim.AngleUnit(np.pi/180)
-            ra = cat.get(i, 'RAJ2000') * degrees
-            dec = cat.get(i, 'DECJ2000') * degrees
+            ra = ra_array[i] * degrees
+            dec = dec_array[i] * degrees
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec) 
             imageCenter = wcs.posToImage(worldCenter)
             new_image_center = transformPos(imageCenter.x, imageCenter.y)
@@ -271,7 +310,7 @@ def draw_stars(j, cat, wcs):
             wav = np.arange(0.400, 2.600, 0.001) * u.um
             fluxUnnorm = sedBB(wav, 5000*u.K)
             fLambdaRef = fNuRef * const.c / wav**2
-            mag = cat.get(i, 'H')
+            mag = mag_array[i]
             norm = 10**(-0.4*mag) * np.trapezoid(fLambdaRef*transmissionCurve*wav, x=wav)/np.trapezoid(fluxUnnorm*transmissionCurve*wav, x=wav)
             flux = norm*fluxUnnorm
             nPhotQ = np.trapezoid(flux*effAreaTable['F158']*u.m**2*wav*tExp/(const.h * const.c), x=wav)
@@ -327,6 +366,12 @@ if __name__ == '__main__':
     #cat = cat[:1000] # added this line to only print out first 1000 stars in image
     print('read cat!')
     sys.stdout.flush()
+
+    catalog = read_catalog(config['starCat'])
+
+    ra_array = np.array(catalog['ra'])
+    dec_array = np.array(catalog['dec'])
+    mag_array = np.array(catalog['mag_H'])
     
     degrees = galsim.AngleUnit(np.pi/180)
     wcsFileName = '/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits'
@@ -340,9 +385,9 @@ if __name__ == '__main__':
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
-        with fits.open(config["starCat"]) as f:
-            ra = f[1].data["RAJ2000"] * np.pi / 180
-            dec = f[1].data["DECJ2000"] * np.pi / 180
+            ra = ra_array * np.pi / 180
+            dec = dec_array * np.pi / 180
+
             world_pos = mywcs.toWorld(galsim.PositionD(x=2044, y=2044))
             cos_theta = np.sin(world_pos.rad[1]) * np.sin(dec) + np.cos(world_pos.rad[1]) * np.cos(dec) * np.cos(ra - world_pos.rad[0])
             is_in_circle = cos_theta > np.cos((0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180)
@@ -388,8 +433,8 @@ if __name__ == '__main__':
 
     for i in range(cat.nobjects):
         degrees = galsim.AngleUnit(np.pi/180)
-        ra = cat.get(i, 'RAJ2000')*degrees
-        dec = cat.get(i, 'DECJ2000')*degrees
+        ra = ra_array[i] * degrees
+        dec = dec_array[i] * degrees
         x, y = convert_pos(ra, dec, mywcs)
         j = assign_star(x, y) 
         task_array[i] = j 
