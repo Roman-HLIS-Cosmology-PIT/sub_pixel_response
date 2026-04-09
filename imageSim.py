@@ -285,7 +285,7 @@ def draw_stars(j, cat, wcs):
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad) 
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
-        for i in range(cat.nobjects): # do I add cat.nobjects here? Or do I remove this completely?
+        for i in range(nobj): # do I add nobj here? Or do I remove this completely?
             if task_array[i] != j:
                 continue
             if not is_in_circle[i]:
@@ -293,8 +293,9 @@ def draw_stars(j, cat, wcs):
             
             # First, calculating position
             degrees = galsim.AngleUnit(np.pi/180)
-            ra = ra_array[i] * degrees
-            dec = dec_array[i] * degrees
+            ra = np.array(cat['ra'])
+            dec = np.array(cat['dec'])
+            mag = np.array(cat['mag_H'])
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec) 
             imageCenter = wcs.posToImage(worldCenter)
             new_image_center = transformPos(imageCenter.x, imageCenter.y)
@@ -355,23 +356,14 @@ if __name__ == '__main__':
     sys.stdout.flush()
     
     # Read RA,Dec from star catalog
-    try:
-        assert('.fits' in config['starCat'])
-    except:
-        raise Exception("Star Catalog should be a .fits file")
-    print('executed try, assert, except, and raise for reading ra and dec from star catalog!')
-    sys.stdout.flush()
-
-    cat = galsim.Catalog(config['starCat'])
+    #cat = galsim.Catalog(config['starCat'])
+    cat = read_catalog(config['starCat'])
     #cat = cat[:1000] # added this line to only print out first 1000 stars in image
+    nobj = len(cat['RA'])
     print('read cat!')
     sys.stdout.flush()
 
-    catalog = read_catalog(config['starCat'])
-
-    ra_array = np.array(catalog['ra'])
-    dec_array = np.array(catalog['dec'])
-    mag_array = np.array(catalog['mag_H'])
+    
     
     degrees = galsim.AngleUnit(np.pi/180)
     wcsFileName = '/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits'
@@ -394,7 +386,7 @@ if __name__ == '__main__':
             print('read if not config randomPos for with fits.open starCat!')
             sys.stdout.flush()
     else:
-        is_in_circle = np.ones(cat.nobjects, dtype=bool) 
+        is_in_circle = np.ones(nobj, dtype=bool) 
         print('read else statement for is_in_circle!')
         sys.stdout.flush()
                
@@ -429,9 +421,9 @@ if __name__ == '__main__':
     sys.stdout.flush()
 
     # Tile/section assignment per star
-    task_array = np.zeros(cat.nobjects, dtype=np.int32)
+    task_array = np.zeros(nobj, dtype=np.int32)
 
-    for i in range(cat.nobjects):
+    for i in range(nobj):
         degrees = galsim.AngleUnit(np.pi/180)
         ra = ra_array[i] * degrees
         dec = dec_array[i] * degrees
@@ -447,7 +439,7 @@ if __name__ == '__main__':
     sys.stdout.flush()
 
     # Determine number of processes to use
-    num_processes = min(ncpu, cat.nobjects)
+    num_processes = min(ncpu, nobj)
 
     # Printing number of processes to see if multiprocessing code above works
     print(num_processes)
