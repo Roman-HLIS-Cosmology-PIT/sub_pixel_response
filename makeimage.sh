@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=makeimage
-#SBATCH --account=PCON0003
+#SBATCH --account=PAS2340
 #SBATCH --time=96:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
