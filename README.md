@@ -17,10 +17,15 @@ on optimizing the observations and dithering plan, as well as analysis methods
 `imageSim.py` contains the code to make oversampled/high resolution Roman images. An example 
 configuration file is provided in `example_test.yaml`. 
 
+To run `imageSim.py`, use the following command in this repository
+```
+sbatch makeimage.sh
+```
+with the correct edits to `makeimage.sh` so that you are running on the correct account. 
+
+
 Post processing functions live in `processImage.py`. In your local repository, you can import functions 
 ```
 from processImage import compute_pixel_weights
 ```
 and call it as needed. 
-
-Nihar edited this right now
