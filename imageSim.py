@@ -227,7 +227,7 @@ def read_catalog(file_path, file_type=None):
         dec = df["Dec"]
 
         # Using Anderson H-band column
-        mag_H = df["m160_u"]
+        mag_H = df["m160_u"] + 1.39 # This is converting from Vega to AB 
 
     else:
         raise ValueError("Unsupported file type")
