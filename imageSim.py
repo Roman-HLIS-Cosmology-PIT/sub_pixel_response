@@ -214,10 +214,14 @@ def read_catalog(file_path, file_type=None):
 
     # ASCII catalogs (Anderson)
     elif file_type == "ascii":
-        try:
-            df = pd.read_csv(file_path)
-        except:
-            df = pd.read_table(file_path, delim_whitespace=True, comment="#")
+        with open(file_path, "r") as f:
+            for line in f:
+                if "RA" in line and "Dec" in line:
+                    # Remove the '#' and split the line into a list of names
+                    cols = line.replace("#", "").split()
+                    break
+
+        df = pd.read_table(file_path, sep="\s+", comment="#", names=cols)
 
         ra = df["RA"]
         dec = df["Dec"]
