@@ -435,6 +435,7 @@ if __name__ == "__main__":
     mybounds = readImage.bounds
     readImage.header["CRVAL1"] = float(config["raCen"])
     readImage.header["CRVAL2"] = float(config["decCen"])
+    readImage.header["LONPOLE"] = float(config["LONPOLE"])
     mywcs, neworigin = galsim.wcs.readFromFitsHeader(readImage.header)
     print("read from degrees to mywcs, neworigin!")
     sys.stdout.flush()
