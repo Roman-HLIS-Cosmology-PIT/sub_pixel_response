@@ -16,6 +16,7 @@ from multiprocessing import Pool, cpu_count
 import functools
 import os
 from scipy.special import legendre
+from scipy.signal.windows import tukey
 import datetime
 import pytz
 
@@ -71,18 +72,16 @@ sys.stdout.flush()
 
 
 def smooth_and_pad(
-    inArray: np.array, tophatwidth: float = 0.0, gaussiansigma: float = 0.0
+    inArray: np.array, tophatwidth: float = 0.0
 ) -> np.array:
     """
-    Utility to smear a PSF with a tophat and a Gaussian.
+    Utility to smear a PSF with a tophat and apply a Tukey taper window.
 
     Parameters
     ----------
     inArray : np.array, shape : (ny, nx)
         Input PSF array to be smeared.
     tophatwidth : float, optional
-    gaussiansigma : float, optional
-        Both in units of the pixels given (not native pixel). The default is 0.0.
 
     Returns
     -------
@@ -91,7 +90,7 @@ def smooth_and_pad(
 
     """
 
-    npad = int(np.ceil(tophatwidth + 6 * gaussiansigma + 1))
+    npad = int(np.ceil(tophatwidth + in_psf_oversam + 2))  # 6 from oversampling, 2 for safety margin
     npad += (4 - npad) % 4  # make a multiple of 4
     (ny, nx) = np.shape(inArray)
     nyy = ny + npad * 2
@@ -108,12 +107,14 @@ def smooth_and_pad(
     outArrayFT *= (
         np.sinc(ux[None, :] * tophatwidth)
         * np.sinc(uy[:, None] * tophatwidth)
-        * np.exp(
-            -2.0 * np.pi**2 * gaussiansigma**2 * (ux[None, :] ** 2 + uy[:, None] ** 2)
-        )
     )
 
     outArray = np.real(np.fft.ifft2(outArrayFT))
+
+    wy = tukey(nyy, alpha=0.73)   # Tukey taper parameter derived from sampling relation:
+    wx = tukey(nxx, alpha=0.73)   # alpha = 1 - 2DP/(lambda*k)
+    outArray *= np.outer(wy, wx)  
+
     return outArray
 
 
