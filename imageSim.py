@@ -108,12 +108,13 @@ def smooth_and_pad(
         np.sinc(ux[None, :] * tophatwidth)
         * np.sinc(uy[:, None] * tophatwidth)
     )
+    
+    wy = np.fft.ifftshift(tukey(nyy, alpha=0.73))   # Tukey taper parameter derived from sampling relation:
+    wx = np.fft.ifftshift(tukey(nxx, alpha=0.73))   # alpha = 1 - 2DP/(lambda*k)
+
+    outArrayFT *= np.outer(wy, wx)
 
     outArray = np.real(np.fft.ifft2(outArrayFT))
-
-    wy = tukey(nyy, alpha=0.73)   # Tukey taper parameter derived from sampling relation:
-    wx = tukey(nxx, alpha=0.73)   # alpha = 1 - 2DP/(lambda*k)
-    outArray *= np.outer(wy, wx)  
 
     return outArray
 
@@ -321,7 +322,7 @@ def Eqn(matrix, soln):
 # Delete functions above later, this needs to be done in separate .py file
 
 
-def draw_stars(j, cat, wcs):
+def draw_stars(j, cat, wcs, scaNum, nobj, is_in_circle, task_array, effAreaTable, transmissionCurve, tExp, roman_bandpasses, big_fft_params, x_padding=std_pad, y_padding=std_pad):  # Sorry, my code said all of these were undefined, I'll remove this after                       
     """Draw stars for tile index j into a temporary image section."""
     with fits.open(
         "/users/PAS2340/karadiludovico/fits_files/psf_poly.fits"
@@ -509,7 +510,7 @@ if __name__ == "__main__":
         task_array[i] = j
 
     # Prepare arguments for parallel processing
-    multiprocess_stars = functools.partial(draw_stars, cat=cat, wcs=mywcs)
+    multiprocess_stars = functools.partial(draw_stars, cat=cat, wcs=mywcs, scaNum=scaNum, nobj=nobj, is_in_circle=is_in_circle, task_array=task_array, effAreaTable=effAreaTable, transmissionCurve=transmissionCurve, tExp=tExp, roman_bandpasses=roman_bandpasses, big_fft_params=big_fft_params, x_padding=std_pad, y_padding=std_pad)
     print("read multiprocess_stars!")
     sys.stdout.flush()
 
