@@ -503,10 +503,8 @@ if __name__ == "__main__":
     # Telescope exposure/SCA
     scaNum = int(config["SCA"])
     effAreaTable = aio.ascii.read(
-            "Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{}_20240301.ecsv".format(
-                scaNum
+            f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{scaNum:02d}_20240301.ecsv"
             )
-        )
 
     mirrorDiameter = 2.37 * u.m
     geomArea = np.pi * mirrorDiameter**2 / 4
