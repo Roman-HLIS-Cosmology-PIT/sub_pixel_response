@@ -1,8 +1,9 @@
 # config.yaml
-raCen: 268.055873          # Right Ascension center in degrees (should be the same as the one in besancon)
-decCen: -28.860960        # Declination center in degrees (should be the same as the one in besancon)
-starCat: /users/PAS2340/karadiludovico/Besancon/besancon_GB.fits  # Path to star catalog
+raCen: 80.5          # Right Ascension center in degrees (should be the same as the one in besancon)
+decCen: -69.5        # Declination center in degrees (should be the same as the one in besancon)
+starCat: /users/PAS2340/karadiludovico/star_catalogs/COMPREHENSIVE_2017p38.XYVHJKLM_OBS_EST_W_RDF  # Path to star catalog
+LONPOLE: 210         # Rotation, changes orientation of image (default 180)
 SCA: 14              # SCA Number
 randomPos: false    # Use random positions for stars
 blackBody: true    # Use blackbody approximation for stars
-outFile: myTestPoly.fits #Name of the file to save the image to 
+outFile: myTestPoly_5_20.fits #Name of the file to save the image to 
