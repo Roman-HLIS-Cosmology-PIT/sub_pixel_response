@@ -4,8 +4,23 @@ import numpy as np
 
 
 def computeExpVal(oversam_pix_grid, xPower, yPower):
-    """Writing a function that computes the expectation
-    value for each component/term."""
+    """
+    Writing a function that computes the expectation value for each component/term.
+
+    Parameters
+    ----------
+    oversam_pix_grid : (np.ndarray of float, np.ndarray of float)
+        The x (first) and y (second) coordinates of the subpixel grid points.
+    xPower, yPower : int
+        The exponents of x and y.
+
+    Returns
+    -------
+    float
+        The mean value of x^xPower * y^yPower over the given points.
+
+    """
+
     x, y = oversam_pix_grid
     eval_x = np.power(x, xPower)
     eval_y = np.power(y, yPower)
