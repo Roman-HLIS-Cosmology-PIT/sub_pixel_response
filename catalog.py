@@ -9,10 +9,7 @@ def read_catalog(file_path, file_type=None):
 
     # Determining file type
     if file_type is None:
-        if file_path.lower().endswith(".fits"):
-            file_type = "fits"
-        else:
-            file_type = "ascii"
+        file_type = "fits" if file_path.lower().endswith(".fits") else "ascii"
 
     # FITS catalogs (Besancon)
     if file_type == "fits":
@@ -26,7 +23,7 @@ def read_catalog(file_path, file_type=None):
     elif file_type == "ascii":
         try:
             df = pd.read_csv(file_path)
-        except:
+        except Exception:
             df = pd.read_table(file_path, delim_whitespace=True, comment="#")
 
         ra = df["RA"]
