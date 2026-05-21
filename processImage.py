@@ -28,8 +28,8 @@ def computeExpVal(oversam_pix_grid, xPower, yPower):
 
 
 def compute_pixel_weights(offsets, oversam=6):
-     """
-    Computes subpixel weighting coefficients 
+    """
+    Computes subpixel weighting coefficients
     for each pixel using expectation values.
 
     Parameters
@@ -124,7 +124,7 @@ def compute_pixel_weights(offsets, oversam=6):
 
 
 def generateOffsetArray(offsets, imageSize=4096, oversample=6):
-     """
+    """
     Expands a smaller offset array into a full image-sized offset array.
 
     Parameters
@@ -148,7 +148,7 @@ def generateOffsetArray(offsets, imageSize=4096, oversample=6):
 
 
 def processImage(oversampledImage, offsets, imageSize=4096, oversample=6):
-     """
+    """
     Downsamples an oversampled image using the computed subpixel weights.
 
     Parameters

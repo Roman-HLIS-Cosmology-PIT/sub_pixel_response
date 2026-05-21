@@ -65,7 +65,7 @@ def transform_pos(x, y, oversam=6):
     return (X, Y)
 
 
-print("transformPos read!")
+print("transform_pos read!")
 sys.stdout.flush()
 
 
@@ -148,18 +148,18 @@ def l_poly_array(PORDER, u_, v_):
     return arr
 
 
-print("returned LPolyArr!")
+print("returned l_poly_array!")
 sys.stdout.flush()
 
 
 def compute_poly(inpsf_cube, pixloc, order=1):
     """Compute PSF from polynomial PSF cube at given detector pixel location."""
-    lpoly = LPolyArr(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
+    lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
     this_psf = smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=in_psf_oversam) / 64
     return this_psf
 
 
-print("returned this_psf and read LPolyArr function!")
+print("returned this_psf and read l_poly_array function!")
 sys.stdout.flush()
 
 # More debugging prints
@@ -228,7 +228,7 @@ def make_parser():
     return parser
 
 
-print("read makeParser and returned parser!")
+print("read make_parser and returned parser!")
 sys.stdout.flush()
 
 
@@ -239,7 +239,7 @@ def sed_bb(w, T):
     ).decompose()
 
 
-print("retuned value and read sedBB function!")
+print("retuned value and read sed_bb function!")
 sys.stdout.flush()
 
 
@@ -350,7 +350,7 @@ def draw_stars(
             dec = cat["dec"][i] * degrees
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
             imageCenter = wcs.posToImage(worldCenter)
-            new_image_center = transformPos(imageCenter.x, imageCenter.y)
+            new_image_center = transform_pos(imageCenter.x, imageCenter.y)
             imageCenter2 = galsim.PositionD(x=new_image_center[0], y=new_image_center[1])
 
             # Next, using position to compute PSF, use del command
@@ -364,8 +364,8 @@ def draw_stars(
 
             # Rest of flux calculations
             wav = np.arange(0.400, 2.600, 0.001) * u.um
-            fluxUnnorm = sedBB(wav, 5000 * u.K)
-            fLambdaRef = fNuRef * const.c / wav**2
+            fluxUnnorm = sed_bb(wav, 5000 * u.K)
+            fLambdaRef = f_nu_ref * const.c / wav**2
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
@@ -415,7 +415,7 @@ sys.stdout.flush()
 # Main Execution
 if __name__ == "__main__":
     # Parse command line to get config file path
-    parser = makeParser()
+    parser = make_parser()
     args = parser.parse_args()
     print("read parser!")
     sys.stdout.flush()
@@ -434,13 +434,13 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     degrees = galsim.AngleUnit(np.pi / 180)
-    wcs_file_mame = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
-    read_image = galsim.fits.read(file_name=wcsFileName, hdu=1, read_header=True)
-    mybounds = readImage.bounds
+    wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
+    read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
+    mybounds = read_image.bounds
     read_image.header["CRVAL1"] = float(config["raCen"])
     read_image.header["CRVAL2"] = float(config["decCen"])
     read_image.header["LONPOLE"] = float(config["LONPOLE"])
-    mywcs, neworigin = galsim.wcs.readFromFitsHeader(readImage.header)
+    mywcs, neworigin = galsim.wcs.readFromFitsHeader(read_image.header)
     print("read from degrees to mywcs, neworigin!")
     sys.stdout.flush()
 
