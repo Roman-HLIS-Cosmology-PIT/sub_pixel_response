@@ -344,7 +344,8 @@ def draw_stars(
             # Next, using position to compute PSF, use del command
             this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1]))
             psf = galsim.Image(this_psf)
-            # psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs, wavelength=roman_bandpasses['H158'])
+            # psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
+            #     wavelength=roman_bandpasses['H158'])
             interp_psf = galsim.InterpolatedImage(
                 psf, x_interpolant="lanczos32", scale=1
             )  # 0.11/in_psf_oversam)
