@@ -78,6 +78,7 @@ def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
     inArray : np.array, shape : (ny, nx)
         Input PSF array to be smeared.
     tophatwidth : float, optional
+        Width of the tophat convolution smearing PSF.
 
     Returns
     -------
@@ -187,10 +188,7 @@ def read_catalog(file_path, file_type=None):
 
     # Determining file type
     if file_type is None:
-        if file_path.lower().endswith(".fits"):
-            file_type = "fits"
-        else:
-            file_type = "ascii"
+        file_type = "fits" if file_path.lower().endswith(".fits") else "ascii"
 
     # FITS catalogs (Besancon)
     if file_type == "fits":
@@ -288,7 +286,21 @@ sys.stdout.flush()
 
 
 def eqn(matrix, soln):
-    """"""
+    """
+    Solves a matrix equation using the inverse matrix.
+
+    Parameters
+    ----------
+    matrix: np.array
+        Input coefficient matrix.
+    soln: np.array
+        Solution vector or matrix
+    Returns:
+    ----------
+    np.array
+        The result of the inverse matrix multiplied by the 
+        solution vector or matrix.
+    """
     return matrix**-1 * soln
 
     # def OffsetPixel([pixeloffsets], xgrid, ygrid):
