@@ -49,7 +49,7 @@ def print_report(s):
 
 # Global data and constants
 in_psf_oversam = 6
-fNuRef = 3.631e-23 * (u.W / u.m**2) / u.Hz  # W/m^2/Hz
+f_nu_ref = 3.631e-23 * (u.W / u.m**2) / u.Hz  # W/m^2/Hz
 process_h = 4
 process_v = 8
 nside = 4088
@@ -58,7 +58,7 @@ print("read global data!")
 sys.stdout.flush()
 
 
-def transformPos(x, y, oversam=6):
+def transform_pos(x, y, oversam=6):
     """Convert detector pixel coordinates into oversampled pixel space."""
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
@@ -116,7 +116,7 @@ print("returned outArray and read smooth_and_pad function!")
 sys.stdout.flush()
 
 
-def LPolyArr(PORDER, u_, v_):
+def l_poly_array(PORDER, u_, v_):
     """
     Generates a length (PORDER+1)**2 array of the Legendre polynomials
     for n=0..PORDER { for m=0..PORDER { coef P_m(u_) P_n(v_) }}
@@ -223,7 +223,7 @@ def read_catalog(file_path, file_type=None):
     return {"ra": ra, "dec": dec, "mag_H": mag_H}
 
 
-def makeParser():
+def make_parser():
     """Create argument parser"""
     parser = argparse.ArgumentParser(description="Star Simulation Configuration")
     parser.add_argument("config_file", help="Path to YAML configuration file")
@@ -234,7 +234,7 @@ print("read makeParser and returned parser!")
 sys.stdout.flush()
 
 
-def sedBB(w, T):
+def sed_bb(w, T):
     """Return blackbody flux density at wavelength and temperature."""
     return (
         (8 * np.pi * const.h * const.c**2 / w**5) * 1 / (np.exp(const.h * const.c / (w * const.k_B * T)) - 1)
@@ -287,7 +287,7 @@ print("read j_location and returned process_bounds!")
 sys.stdout.flush()
 
 
-def Eqn(matrix, soln):
+def eqn(matrix, soln):
     """"""
     return matrix**-1 * soln
 
@@ -422,12 +422,12 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     degrees = galsim.AngleUnit(np.pi / 180)
-    wcsFileName = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
-    readImage = galsim.fits.read(file_name=wcsFileName, hdu=1, read_header=True)
+    wcs_file_mame = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
+    read_image = galsim.fits.read(file_name=wcsFileName, hdu=1, read_header=True)
     mybounds = readImage.bounds
-    readImage.header["CRVAL1"] = float(config["raCen"])
-    readImage.header["CRVAL2"] = float(config["decCen"])
-    readImage.header["LONPOLE"] = float(config["LONPOLE"])
+    read_image.header["CRVAL1"] = float(config["raCen"])
+    read_image.header["CRVAL2"] = float(config["decCen"])
+    read_image.header["LONPOLE"] = float(config["LONPOLE"])
     mywcs, neworigin = galsim.wcs.readFromFitsHeader(readImage.header)
     print("read from degrees to mywcs, neworigin!")
     sys.stdout.flush()
