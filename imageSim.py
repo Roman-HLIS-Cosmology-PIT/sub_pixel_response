@@ -298,7 +298,7 @@ def eqn(matrix, soln):
     Returns:
     ----------
     np.array
-        The result of the inverse matrix multiplied by the 
+        The result of the inverse matrix multiplied by the
         solution vector or matrix.
     """
     return matrix**-1 * soln

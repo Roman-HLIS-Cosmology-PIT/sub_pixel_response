@@ -28,6 +28,23 @@ def computeExpVal(oversam_pix_grid, xPower, yPower):
 
 
 def compute_pixel_weights(offsets, oversam=6):
+     """
+    Computes subpixel weighting coefficients 
+    for each pixel using expectation values.
+
+    Parameters
+    ----------
+    offsets : np.ndarray
+        Array of shape (image_size, image_size, 6) containing per-pixel offset values.
+    oversam : int
+        Subpixel sampling factor.
+
+    Returns
+    -------
+    np.ndarray
+        Weight array of shape (image_size, image_size, oversam, oversam)
+        representing subpixel contribution weights for each pixel.
+    """
     x_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
     y_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
     # Locally define meshGrid for consistency with computeExpVal calls within this function
@@ -107,6 +124,23 @@ def compute_pixel_weights(offsets, oversam=6):
 
 
 def generateOffsetArray(offsets, imageSize=4096, oversample=6):
+     """
+    Expands a smaller offset array into a full image-sized offset array.
+
+    Parameters
+    ----------
+    offsets : np.ndarray
+        Input offset array of shape (imageSize, imageSize, oversample).
+    imageSize : int
+        Size of the image in pixels.
+    oversample : int
+        Number of subpixel offsets per pixel.
+
+    Returns
+    -------
+    np.ndarray
+        Expanded offset array of shape (imageSize, imageSize, oversample).
+    """
     # This function will copy a single array of offsets into 4096*4096*6 array to be used for testing.
     offsetArray = np.zeros((imageSize, imageSize, oversample))
     offsetArray[:imageSize, :imageSize, :] = offsets
@@ -114,6 +148,25 @@ def generateOffsetArray(offsets, imageSize=4096, oversample=6):
 
 
 def processImage(oversampledImage, offsets, imageSize=4096, oversample=6):
+     """
+    Downsamples an oversampled image using the computed subpixel weights.
+
+    Parameters
+    ----------
+    oversampledImage : np.ndarray
+        Input image of shape (imageSize * oversample, imageSize * oversample).
+    offsets : np.ndarray
+        Offset array of shape (imageSize, imageSize, oversample).
+    imageSize : int
+        Size of the final output image.
+    oversample : int
+        Subsampling factor per pixel.
+
+    Returns
+    -------
+    np.ndarray
+        Downsampled image of shape (imageSize, imageSize).
+    """
     # oversampledImage is a (6*4096)^2 image
     # offsets refer to a (4096*4096*6) array that contains deltax, deltay etc for each pixel
     # want to return a single 4096*4096 image/array
