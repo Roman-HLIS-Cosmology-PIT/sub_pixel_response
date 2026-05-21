@@ -443,7 +443,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     # Determine which stars are in the circle
-    """if not config["randomPos"]:
+    if not config["randomPos"]:
         ra = cat["ra"] * np.pi / 180
         dec = cat["dec"] * np.pi / 180
 
@@ -459,48 +459,7 @@ if __name__ == "__main__":
     else:
         is_in_circle = np.ones(nobj, dtype=bool)
         print("read else statement for is_in_circle!")
-        sys.stdout.flush() """
-    
-    # Determine which stars are in circle
-    is_in_circle = np.zeros(nobj, dtype=bool)
-
-    if not config["randomPos"]:
-        for i in range(nobj):
-            ra = cat["ra"][i] * degrees
-            dec = cat["dec"][i] * degrees
-            world_pos = galsim.CelestialCoord(ra=ra, dec=dec)
-            image_pos = mywcs.posToImage(world_pos)
-            x = image_pos.x
-            y = image_pos.y
-
-            # Keep stars that fall on the detector
-            if (0 <= x < 4088) and (0 <= y < 4088):
-                is_in_circle[i] = True
-    else:
-        is_in_circle[:] = True 
-    print("read if not config randomPos!")
-    sys.stdout.flush()         
-    # Delete this section of code later if this doesn't work      
-
-
-    # Telescope exposure/SCA
-    """scaNum = int(config["SCA"])
-    if scaNum < 10:
-        effAreaTable = aio.ascii.read(
-            "Roman_effarea_tables_20240327/Roman_effarea_v8_SCA0{}_20240301.ecsv".format(
-                scaNum
-            )
-        )
-        print("read if scaNum!")
-        sys.stdout.flush()
-    else:
-        effAreaTable = aio.ascii.read(
-            "Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{}_20240301.ecsv".format(
-                scaNum
-            )
-        )
-        print("read else scaNum!")
-        sys.stdout.flush()"""
+        sys.stdout.flush() 
 
     # Telescope exposure/SCA
     scaNum = int(config["SCA"])
