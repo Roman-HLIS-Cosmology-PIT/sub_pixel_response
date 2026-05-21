@@ -92,6 +92,8 @@ ignore = [
     "SIM117", # Allow nested with
     "UP015", # Allow redundant open parameters
     "UP028", # Allow yield in for loop
+    "N806", # Allow for capital letters in variable names
+    "N803", # Allow for capital letters in argument names
 ]
 
 

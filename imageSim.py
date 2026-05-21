@@ -1,24 +1,22 @@
-import numpy as np
-import galsim
-import galsim.roman
-from astropy.table import Table
-import yaml
-import pandas as pd
-from astropy.modeling.physical_models import BlackBody
-from astropy import units as u
-import astropy.io as aio
-from astropy import constants as const
-import warnings
 import argparse
-from astropy.io import fits
-import sys
-from multiprocessing import Pool, cpu_count
+import datetime
 import functools
 import os
-from scipy.special import legendre
-from scipy.signal.windows import tukey
-import datetime
+import sys
+from multiprocessing import Pool
+
+import astropy.io as aio
+import galsim
+import galsim.roman
+import numpy as np
+import pandas as pd
 import pytz
+import yaml
+from astropy import constants as const
+from astropy import units as u
+from astropy.io import fits
+from scipy.signal.windows import tukey
+from scipy.special import legendre
 
 """
 Roman Telescope Star Field Image Simulator
@@ -71,9 +69,7 @@ print("transformPos read!")
 sys.stdout.flush()
 
 
-def smooth_and_pad(
-    inArray: np.array, tophatwidth: float = 0.0
-) -> np.array:
+def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
     """
     Utility to smear a PSF with a tophat and apply a Tukey taper window.
 
@@ -104,13 +100,10 @@ def smooth_and_pad(
     uy = np.where(uy > 0.5, uy - 1, uy)
     ux = np.linspace(0, nxx - 1, nxx) / nxx
     ux = np.where(ux > 0.5, ux - 1, ux)
-    outArrayFT *= (
-        np.sinc(ux[None, :] * tophatwidth)
-        * np.sinc(uy[:, None] * tophatwidth)
-    )
-    
-    wy = np.fft.ifftshift(tukey(nyy, alpha=0.73))   # Tukey taper parameter derived from sampling relation:
-    wx = np.fft.ifftshift(tukey(nxx, alpha=0.73))   # alpha = 1 - 2DP/(lambda*k)
+    outArrayFT *= np.sinc(ux[None, :] * tophatwidth) * np.sinc(uy[:, None] * tophatwidth)
+
+    wy = np.fft.ifftshift(tukey(nyy, alpha=0.73))  # Tukey taper parameter derived from sampling relation:
+    wx = np.fft.ifftshift(tukey(nxx, alpha=0.73))  # alpha = 1 - 2DP/(lambda*k)
 
     outArrayFT *= np.outer(wy, wx)
 
@@ -160,15 +153,8 @@ sys.stdout.flush()
 
 def compute_poly(inpsf_cube, pixloc, order=1):
     """Compute PSF from polynomial PSF cube at given detector pixel location."""
-    lpoly = LPolyArr(
-        order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0
-    )
-    this_psf = (
-        smooth_and_pad(
-            np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=in_psf_oversam
-        )
-        / 64
-    )
+    lpoly = LPolyArr(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
+    this_psf = smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=in_psf_oversam) / 64
     return this_psf
 
 
@@ -229,7 +215,7 @@ def read_catalog(file_path, file_type=None):
         dec = df["Dec"]
 
         # Using Anderson H-band column
-        mag_H = df["m160_u"] + 1.39 # This is converting from Vega to AB 
+        mag_H = df["m160_u"] + 1.39  # This is converting from Vega to AB
 
     else:
         raise ValueError("Unsupported file type")
@@ -251,9 +237,7 @@ sys.stdout.flush()
 def sedBB(w, T):
     """Return blackbody flux density at wavelength and temperature."""
     return (
-        (8 * np.pi * const.h * const.c**2 / w**5)
-        * 1
-        / (np.exp(const.h * const.c / (w * const.k_B * T)) - 1)
+        (8 * np.pi * const.h * const.c**2 / w**5) * 1 / (np.exp(const.h * const.c / (w * const.k_B * T)) - 1)
     ).decompose()
 
 
@@ -278,9 +262,7 @@ def assign_star(x, y):
     # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
     x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
     y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
-    task = (
-        y_blue_idx * process_h + x_blue_idx
-    )  # fixed this section, will see if this works
+    task = y_blue_idx * process_h + x_blue_idx  # fixed this section, will see if this works
     return task
 
 
@@ -322,11 +304,24 @@ def Eqn(matrix, soln):
 # Delete functions above later, this needs to be done in separate .py file
 
 
-def draw_stars(j, cat, wcs, scaNum, nobj, is_in_circle, task_array, effAreaTable, transmissionCurve, tExp, roman_bandpasses, big_fft_params, x_padding=std_pad, y_padding=std_pad):  # Sorry, my code said all of these were undefined, I'll remove this after                       
+def draw_stars(
+    j,
+    cat,
+    wcs,
+    scaNum,
+    nobj,
+    is_in_circle,
+    task_array,
+    effAreaTable,
+    transmissionCurve,
+    tExp,
+    roman_bandpasses,
+    big_fft_params,
+    x_padding=std_pad,
+    y_padding=std_pad,
+):  # Sorry, my code said all of these were undefined, I'll remove this after
     """Draw stars for tile index j into a temporary image section."""
-    with fits.open(
-        "/users/PAS2340/karadiludovico/fits_files/psf_poly.fits"
-    ) as inpsf_file:
+    with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
         psf_data = np.copy(inpsf_file[scaNum].data[:, :, :])
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
@@ -344,14 +339,10 @@ def draw_stars(j, cat, wcs, scaNum, nobj, is_in_circle, task_array, effAreaTable
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
             imageCenter = wcs.posToImage(worldCenter)
             new_image_center = transformPos(imageCenter.x, imageCenter.y)
-            imageCenter2 = galsim.PositionD(
-                x=new_image_center[0], y=new_image_center[1]
-            )
+            imageCenter2 = galsim.PositionD(x=new_image_center[0], y=new_image_center[1])
 
             # Next, using position to compute PSF, use del command
-            this_psf = compute_poly(
-                psf_data, (new_image_center[0], new_image_center[1])
-            )
+            this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1]))
             psf = galsim.Image(this_psf)
             # psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs, wavelength=roman_bandpasses['H158'])
             interp_psf = galsim.InterpolatedImage(
@@ -392,9 +383,7 @@ def draw_stars(j, cat, wcs, scaNum, nobj, is_in_circle, task_array, effAreaTable
             source = galsim.Convolve([interp_psf, st_model], gsparams=big_fft_params)
             print("read flux calculations per star!", i, j)
             sys.stdout.flush()
-            source.drawImage(
-                tempImage, method="no_pixel", center=imageCenter2, add_to_image=True
-            )
+            source.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
             print("read source.drawImage!")
             sys.stdout.flush()
             del psf, this_psf, interp_psf
@@ -448,24 +437,22 @@ if __name__ == "__main__":
         dec = cat["dec"] * np.pi / 180
 
         world_pos = mywcs.toWorld(galsim.PositionD(x=2044, y=2044))
-        cos_theta = np.sin(world_pos.rad[1]) * np.sin(dec) + np.cos(
-            world_pos.rad[1]
-        ) * np.cos(dec) * np.cos(ra - world_pos.rad[0])
-        is_in_circle = cos_theta > np.cos(
-            (0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180
+        cos_theta = np.sin(world_pos.rad[1]) * np.sin(dec) + np.cos(world_pos.rad[1]) * np.cos(dec) * np.cos(
+            ra - world_pos.rad[0]
         )
+        is_in_circle = cos_theta > np.cos((0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180)
         print("read if not config randomPos for with fits.open starCat!")
         sys.stdout.flush()
     else:
         is_in_circle = np.ones(nobj, dtype=bool)
         print("read else statement for is_in_circle!")
-        sys.stdout.flush() 
+        sys.stdout.flush()
 
     # Telescope exposure/SCA
     scaNum = int(config["SCA"])
     effAreaTable = aio.ascii.read(
-            f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{scaNum:02d}_20240301.ecsv"
-            )
+        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{scaNum:02d}_20240301.ecsv"
+    )
 
     mirrorDiameter = 2.37 * u.m
     geomArea = np.pi * mirrorDiameter**2 / 4
@@ -498,7 +485,22 @@ if __name__ == "__main__":
         task_array[i] = j
 
     # Prepare arguments for parallel processing
-    multiprocess_stars = functools.partial(draw_stars, cat=cat, wcs=mywcs, scaNum=scaNum, nobj=nobj, is_in_circle=is_in_circle, task_array=task_array, effAreaTable=effAreaTable, transmissionCurve=transmissionCurve, tExp=tExp, roman_bandpasses=roman_bandpasses, big_fft_params=big_fft_params, x_padding=std_pad, y_padding=std_pad)
+    multiprocess_stars = functools.partial(
+        draw_stars,
+        cat=cat,
+        wcs=mywcs,
+        scaNum=scaNum,
+        nobj=nobj,
+        is_in_circle=is_in_circle,
+        task_array=task_array,
+        effAreaTable=effAreaTable,
+        transmissionCurve=transmissionCurve,
+        tExp=tExp,
+        roman_bandpasses=roman_bandpasses,
+        big_fft_params=big_fft_params,
+        x_padding=std_pad,
+        y_padding=std_pad,
+    )
     print("read multiprocess_stars!")
     sys.stdout.flush()
 
@@ -519,9 +521,9 @@ if __name__ == "__main__":
             if result is not None:
                 print("read if results is not None!")
                 sys.stdout.flush()
-                outImage[result.bounds] += (
-                    result  # Combine incrementally, having error with this line, changed it though
-                )
+                outImage[
+                    result.bounds
+                ] += result  # Combine incrementally, having error with this line, changed it though
                 print("read outImage += result!")
                 sys.stdout.flush()
         print("ran pool for parallel processing!")
