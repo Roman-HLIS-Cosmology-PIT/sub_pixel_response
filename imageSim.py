@@ -22,9 +22,9 @@ from scipy.special import legendre
 Roman Telescope Star Field Image Simulator
 -----------------------------------------
 
-This script generates a simulated Roman Space Telescope image in the H158 band using a star catalog 
-from an imputed Besancon model and a polynomial PSF FITS cube. The Besancon model uses stellar coordinates 
-from the Galactic Buldge Time Domain Survey (GBTDS). For this image simulator, we are using SCA 14 from the 
+This script generates a simulated Roman Space Telescope image in the H158 band using a star catalog
+from an imputed Besancon model and a polynomial PSF FITS cube. The Besancon model uses stellar coordinates
+from the Galactic Buldge Time Domain Survey (GBTDS). For this image simulator, we are using SCA 14 from the
 Roman telescope. The stars are drawn in parallel using an 8x4 toling pattern across the image.
 
 Example YAML Configuration
