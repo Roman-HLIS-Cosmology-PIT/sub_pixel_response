@@ -1,5 +1,4 @@
 import numpy as np
-
 from sub_pixel_response.process_image import compute_exp_val, compute_pixel_weights
 
 
@@ -22,4 +21,4 @@ def test_compute_pixel_weights():
     offsets = np.zeros((4096, 4096, 6))
     offsets[0, 0, :] = np.array([1, 0, 0, 0, 1 / 12 * (1 - 1 / 36), 1 / 12 * (1 - 1 / 36)])
     blah = compute_pixel_weights(offsets)
-    assert blah[0, 0, :, :] == np.ones((6, 6))
+    assert np.allclose(blah[0, 0, :, :], np.ones((6, 6))), f"Expected ones matrix, got {blah[0, 0, :, :]}"
