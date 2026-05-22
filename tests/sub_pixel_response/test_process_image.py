@@ -1,6 +1,5 @@
 import numpy as np
 
-import sub_pixel_response
 from sub_pixel_response.process_image import compute_exp_val, compute_pixel_weights
 
 
