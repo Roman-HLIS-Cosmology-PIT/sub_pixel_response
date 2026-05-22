@@ -5,7 +5,9 @@ license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
 authors = [
-    { name = "Kara DiLudovico", email = "diludovico.2@buckeyemail.osu.edu" }
+    { name = "Kara DiLudovico", email = "diludovico.2@buckeyemail.osu.edu" },
+    { name = "Nihar Dalal", email = "dalal.64@buckeyemail.osu.edu" },
+    { name = "Christopher Hirata", email = "hirata.10@osu.edu" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
