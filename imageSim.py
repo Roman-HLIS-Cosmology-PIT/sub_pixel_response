@@ -320,13 +320,13 @@ def draw_stars(
     j,
     cat,
     wcs,
-    scaNum,
+    sca_num,
     nobj,
     is_in_circle,
     task_array,
-    effAreaTable,
-    transmissionCurve,
-    tExp,
+    eff_area_table,
+    transmission_curve,
+    t_exp,
     roman_bandpasses,
     big_fft_params,
     x_padding=std_pad,
@@ -334,7 +334,7 @@ def draw_stars(
 ):  # Sorry, my code said all of these were undefined, I'll remove this after
     """Draw stars for tile index j into a temporary image section."""
     with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
-        psf_data = np.copy(inpsf_file[scaNum].data[:, :, :])
+        psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
@@ -356,7 +356,7 @@ def draw_stars(
             # Next, using position to compute PSF, use del command
             this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1]))
             psf = galsim.Image(this_psf)
-            # psf = galsim.roman.getPSF(scaNum, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
+            # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
             #     wavelength=roman_bandpasses['H158'])
             interp_psf = galsim.InterpolatedImage(
                 psf, x_interpolant="lanczos32", scale=1
@@ -369,12 +369,12 @@ def draw_stars(
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
-                * np.trapezoid(fLambdaRef * transmissionCurve * wav, x=wav)
-                / np.trapezoid(fluxUnnorm * transmissionCurve * wav, x=wav)
+                * np.trapezoid(fLambdaRef * transmission_curve * wav, x=wav)
+                / np.trapezoid(fluxUnnorm * transmission_curve * wav, x=wav)
             )
             flux = norm * fluxUnnorm
             nPhotQ = np.trapezoid(
-                flux * effAreaTable["F158"] * u.m**2 * wav * tExp / (const.h * const.c),
+                flux * eff_area_table["F158"] * u.m**2 * wav * t_exp / (const.h * const.c),
                 x=wav,
             )
             nPhotQ = nPhotQ.decompose()
@@ -462,23 +462,23 @@ if __name__ == "__main__":
         sys.stdout.flush()
 
     # Telescope exposure/SCA
-    scaNum = int(config["SCA"])
-    effAreaTable = aio.ascii.read(
-        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{scaNum:02d}_20240301.ecsv"
+    sca_num = int(config["SCA"])
+    eff_area_table = aio.ascii.read(
+        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
 
-    mirrorDiameter = 2.37 * u.m
-    geomArea = np.pi * mirrorDiameter**2 / 4
-    transmissionCurve = effAreaTable["F158"] * u.m**2 / geomArea
-    tExp = 120 * u.s
-    print("read from mirrorDiameter to tExp!")
+    mirror_diameter = 2.37 * u.m
+    geom_area = np.pi * mirror_diameter**2 / 4
+    transmission_curve = eff_area_table["F158"] * u.m**2 / geom_area
+    t_exp = 120 * u.s
+    print("read from mirror_diameter to t_exp!")
     sys.stdout.flush()
 
     # Create output image with bounds
     xmin = ymin = -std_pad
     xmax = ymax = nside * in_psf_oversam + std_pad - 1
-    outImage = galsim.Image(galsim.BoundsI(xmin, xmax, ymin, ymax))
-    print("read outImage!")
+    out_image = galsim.Image(galsim.BoundsI(xmin, xmax, ymin, ymax))
+    print("read out_image!")
     sys.stdout.flush()
 
     roman_bandpasses = galsim.roman.getBandpasses()
@@ -502,13 +502,13 @@ if __name__ == "__main__":
         draw_stars,
         cat=cat,
         wcs=mywcs,
-        scaNum=scaNum,
+        sca_num=sca_num,
         nobj=nobj,
         is_in_circle=is_in_circle,
         task_array=task_array,
-        effAreaTable=effAreaTable,
-        transmissionCurve=transmissionCurve,
-        tExp=tExp,
+        eff_area_table=eff_area_table,
+        transmission_curve=transmission_curve,
+        t_exp=t_exp,
         roman_bandpasses=roman_bandpasses,
         big_fft_params=big_fft_params,
         x_padding=std_pad,
@@ -534,10 +534,10 @@ if __name__ == "__main__":
             if result is not None:
                 print("read if results is not None!")
                 sys.stdout.flush()
-                outImage[
+                out_image[
                     result.bounds
                 ] += result  # Combine incrementally, having error with this line, changed it though
-                print("read outImage += result!")
+                print("read out_image += result!")
                 sys.stdout.flush()
         print("ran pool for parallel processing!")
         sys.stdout.flush()
@@ -554,7 +554,7 @@ if __name__ == "__main__":
         print('read for j statement with final_image and results for j!')
         sys.stdout.flush()"""
 
-    # outImage = process_func(0)
-    outImage.write(config["outFile"])
+    # out_image = process_func(0)
+    out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()

@@ -3,7 +3,7 @@ import time
 import numpy as np
 
 
-def computeExpVal(oversam_pix_grid, xPower, yPower):
+def compute_exp_val(oversam_pix_grid, xPower, yPower):
     """
     Writing a function that computes the expectation value for each component/term.
 
@@ -47,23 +47,23 @@ def compute_pixel_weights(offsets, oversam=6):
     """
     x_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
     y_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
-    # Locally define meshGrid for consistency with computeExpVal calls within this function
+    # Locally define meshGrid for consistency with compute_exp_val calls within this function
     meshGrid = np.meshgrid(x_array, y_array)
     sub_pixel_x, sub_pixel_y = meshGrid  # x and y now refer to the (6,6) sub-pixel grid
 
     start = time.time()
-    Ex2 = computeExpVal(meshGrid, 2, 0)
-    Ey2 = computeExpVal(meshGrid, 0, 2)
-    Exy = computeExpVal(meshGrid, 1, 1)
-    Ex3 = computeExpVal(meshGrid, 3, 0)
-    Ey3 = computeExpVal(meshGrid, 0, 3)
-    Ex2y = computeExpVal(meshGrid, 2, 1)
-    Exy2 = computeExpVal(meshGrid, 1, 2)
-    Ex2y2 = computeExpVal(meshGrid, 2, 2)
-    Ex3y = computeExpVal(meshGrid, 3, 1)
-    Exy3 = computeExpVal(meshGrid, 1, 3)
-    Ex4 = computeExpVal(meshGrid, 4, 0)
-    Ey4 = computeExpVal(meshGrid, 0, 4)
+    Ex2 = compute_exp_val(meshGrid, 2, 0)
+    Ey2 = compute_exp_val(meshGrid, 0, 2)
+    Exy = compute_exp_val(meshGrid, 1, 1)
+    Ex3 = compute_exp_val(meshGrid, 3, 0)
+    Ey3 = compute_exp_val(meshGrid, 0, 3)
+    Ex2y = compute_exp_val(meshGrid, 2, 1)
+    Exy2 = compute_exp_val(meshGrid, 1, 2)
+    Ex2y2 = compute_exp_val(meshGrid, 2, 2)
+    Ex3y = compute_exp_val(meshGrid, 3, 1)
+    Exy3 = compute_exp_val(meshGrid, 1, 3)
+    Ex4 = compute_exp_val(meshGrid, 4, 0)
+    Ey4 = compute_exp_val(meshGrid, 0, 4)
     end = time.time()
     print("Time taken to compute expectation vals = ", (end - start))
     # The coefficient matrix built from the expectation values
@@ -123,7 +123,7 @@ def compute_pixel_weights(offsets, oversam=6):
     return weight_array  # This will be (4096, 4096, 6, 6) as desired
 
 
-def generateOffsetArray(offsets, imageSize=4096, oversample=6):
+def generate_offset_array(offsets, imageSize=4096, oversample=6):
     """
     Expands a smaller offset array into a full image-sized offset array.
 
@@ -147,7 +147,7 @@ def generateOffsetArray(offsets, imageSize=4096, oversample=6):
     return offsetArray
 
 
-def processImage(oversampledImage, offsets, imageSize=4096, oversample=6):
+def process_image(oversampledImage, offsets, imageSize=4096, oversample=6):
     """
     Downsamples an oversampled image using the computed subpixel weights.
 
