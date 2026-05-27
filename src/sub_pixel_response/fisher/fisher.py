@@ -271,6 +271,17 @@ def fisher(infile, seed=None):
     """
     Builds the Fisher information from a text file.
 
+    This prints a table of values to the terminal for each band studied:
+
+    - sampling parameter, ``Q`` (dimensionless, number of lambda/D per pixel; >2 is well sampled)
+
+    - mean and standard deviation of the information (upper bound on 1/err^2) for the ePSF in a
+      region of size Q^2/pi (the number of pixels corresponding to a sample, i.e., inverse of the
+      support of the MTF in the uv-plane)
+
+    - mean(Fisher), std(Fisher), and rms(err) for the ePSF based on Monte Carlo realizations of
+      the number of stars in a region of size Q^2/pi
+
     Parameters
     ----------
     infile : str or str-like
