@@ -54,8 +54,6 @@ process_h = 4
 process_v = 8
 nside = 4088
 std_pad = 24
-print("read global data!")
-sys.stdout.flush()
 
 
 def transform_pos(x, y, oversam=6):
@@ -63,10 +61,6 @@ def transform_pos(x, y, oversam=6):
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
     return (X, Y)
-
-
-print("transform_pos read!")
-sys.stdout.flush()
 
 
 def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
@@ -113,10 +107,6 @@ def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
     return outArray
 
 
-print("returned outArray and read smooth_and_pad function!")
-sys.stdout.flush()
-
-
 def l_poly_array(PORDER, u_, v_):
     """
     Generates a length (PORDER+1)**2 array of the Legendre polynomials
@@ -148,10 +138,6 @@ def l_poly_array(PORDER, u_, v_):
     return arr
 
 
-print("returned l_poly_array!")
-sys.stdout.flush()
-
-
 def compute_poly(inpsf_cube, pixloc, order=1):
     """Compute PSF from polynomial PSF cube at given detector pixel location."""
     lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
@@ -159,15 +145,10 @@ def compute_poly(inpsf_cube, pixloc, order=1):
     return this_psf
 
 
-print("returned this_psf and read l_poly_array function!")
-sys.stdout.flush()
-
 # More debugging prints
 # print(os.getenv('SLURM_NTASKS'))
 # print(os.getenv('SLURM_CPUS_PER_TASK'))
 ncpu = int(os.getenv("SLURM_NTASKS"))
-print(ncpu)
-sys.stdout.flush()
 
 
 def read_config(config_file):
@@ -175,10 +156,6 @@ def read_config(config_file):
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
     return config
-
-
-print("returned config and read read_config function!")
-sys.stdout.flush()
 
 
 def read_catalog(file_path, file_type=None):
@@ -228,10 +205,6 @@ def make_parser():
     return parser
 
 
-print("read make_parser and returned parser!")
-sys.stdout.flush()
-
-
 def sed_bb(w, T):
     """Return blackbody flux density at wavelength and temperature."""
     return (
@@ -239,19 +212,11 @@ def sed_bb(w, T):
     ).decompose()
 
 
-print("retuned value and read sed_bb function!")
-sys.stdout.flush()
-
-
 def convert_pos(ra, dec, wcs):
     """Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
     worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
     imageCenter = wcs.posToImage(worldCenter)
     return (imageCenter.x, imageCenter.y)
-
-
-print("returned image center x, y!")
-sys.stdout.flush()
 
 
 def assign_star(x, y):
@@ -262,10 +227,6 @@ def assign_star(x, y):
     y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
     task = y_blue_idx * process_h + x_blue_idx  # fixed this section, will see if this works
     return task
-
-
-print("returned task for assign_star!")
-sys.stdout.flush()
 
 
 # j for given process number
@@ -279,41 +240,6 @@ def j_location(process, x_padding=0, y_padding=0):
         xmin_j - x_padding, xmax_j + x_padding, ymin_j - y_padding, ymax_j + y_padding
     )
     return process_bounds
-
-
-print("read j_location and returned process_bounds!")
-sys.stdout.flush()
-
-
-def eqn(matrix, soln):
-    """
-    Solves a matrix equation using the inverse matrix.
-
-    Parameters
-    ----------
-    matrix: np.array
-        Input coefficient matrix.
-    soln: np.array
-        Solution vector or matrix
-    Returns:
-    ----------
-    np.array
-        The result of the inverse matrix multiplied by the
-        solution vector or matrix.
-    """
-    return matrix**-1 * soln
-
-    # def OffsetPixel([pixeloffsets], xgrid, ygrid):
-    """mat = expectVal(x, 1, 0)
-       solveEqn(mat, ..., pixeloffsets)
-       gives a, b, c, d, e, f
-       compute and return wi: the weights
-       also try to return expectation values later
-       utilizing function above
-       may need to write another function here"""
-
-
-# Delete functions above later, this needs to be done in separate .py file
 
 
 def draw_stars(
@@ -409,9 +335,6 @@ def draw_stars(
     sys.stdout.flush()
 
 
-print("read through draw_stars function!")
-sys.stdout.flush()
-
 # Main Execution
 if __name__ == "__main__":
     # Parse command line to get config file path
@@ -441,8 +364,10 @@ if __name__ == "__main__":
     read_image.header["CRVAL2"] = float(config["decCen"])
     read_image.header["LONPOLE"] = float(config["LONPOLE"])
     mywcs, neworigin = galsim.wcs.readFromFitsHeader(read_image.header)
+    print(mywcs)
     print("read from degrees to mywcs, neworigin!")
     sys.stdout.flush()
+    exit()
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
