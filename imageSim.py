@@ -1,4 +1,3 @@
-import argparse
 import datetime
 import functools
 import os
@@ -9,14 +8,13 @@ import astropy.io as aio
 import galsim
 import galsim.roman
 import numpy as np
-import pandas as pd
 import pytz
-import yaml
 from astropy import constants as const
 from astropy import units as u
 from astropy.io import fits
 from scipy.signal.windows import tukey
 from scipy.special import legendre
+from sub_pixel_response.simio import read_catalog, read_config
 
 """
 Roman Telescope Star Field Image Simulator
@@ -151,60 +149,6 @@ def compute_poly(inpsf_cube, pixloc, order=1):
 ncpu = int(os.getenv("SLURM_NTASKS"))
 
 
-def read_config(config_file):
-    """Read configuration from YAML file"""
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-def read_catalog(file_path, file_type=None):
-    """
-    Read a star catalog and return RA, Dec, and H-band magnitude.
-    """
-
-    # Determining file type
-    if file_type is None:
-        file_type = "fits" if file_path.lower().endswith(".fits") else "ascii"
-
-    # FITS catalogs (Besancon)
-    if file_type == "fits":
-        with fits.open(file_path) as hdul:
-            data = hdul[1].data
-            ra = data["RAJ2000"]
-            dec = data["DECJ2000"]
-            mag_H = data["H"]
-
-    # ASCII catalogs (Anderson)
-    elif file_type == "ascii":
-        with open(file_path, "r") as f:
-            for line in f:
-                if "RA" in line and "Dec" in line:
-                    # Remove the '#' and split the line into a list of names
-                    cols = line.replace("#", "").split()
-                    break
-
-        df = pd.read_table(file_path, sep=r"\s+", comment="#", names=cols)
-
-        ra = df["RA"]
-        dec = df["Dec"]
-
-        # Using Anderson H-band column
-        mag_H = df["m160_u"] + 1.39  # This is converting from Vega to AB
-
-    else:
-        raise ValueError("Unsupported file type")
-
-    return {"ra": ra, "dec": dec, "mag_H": mag_H}
-
-
-def make_parser():
-    """Create argument parser"""
-    parser = argparse.ArgumentParser(description="Star Simulation Configuration")
-    parser.add_argument("config_file", help="Path to YAML configuration file")
-    return parser
-
-
 def sed_bb(w, T):
     """Return blackbody flux density at wavelength and temperature."""
     return (
@@ -336,15 +280,14 @@ def draw_stars(
 
 
 # Main Execution
-if __name__ == "__main__":
-    # Parse command line to get config file path
-    parser = make_parser()
-    args = parser.parse_args()
-    print("read parser!")
-    sys.stdout.flush()
+def run_simulation(config_path):
+    """Main function to run the Roman star field image simulation.
+    Parameters    ----------
+    config_path : str
+    Path to YAML configuration file with simulation parameters."""
 
     # Read configuration from YAML file
-    config = read_config(args.config_file)
+    config = read_config(config_path)
     print("read config!")
     sys.stdout.flush()
 
@@ -359,7 +302,7 @@ if __name__ == "__main__":
     degrees = galsim.AngleUnit(np.pi / 180)
     wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
     read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
-    mybounds = read_image.bounds
+    # mybounds = read_image.bounds
     read_image.header["CRVAL1"] = float(config["raCen"])
     read_image.header["CRVAL2"] = float(config["decCen"])
     read_image.header["LONPOLE"] = float(config["LONPOLE"])
@@ -483,3 +426,8 @@ if __name__ == "__main__":
     out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
+
+
+# Main Execution
+if __name__ == "__main__":
+    run_simulation(sys.argv[1])
