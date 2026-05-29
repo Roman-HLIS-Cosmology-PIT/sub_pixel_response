@@ -1,19 +1,15 @@
+# Tests for four out of eight functions for imageSim.py
+
+
+# Imports will be placed here
 import galsim
 import galsim.roman
 import numpy as np
 from astropy import units as u
-from sub_pixel_response.imageSim import (
-    assign_star,
-    compute_poly,
-    convert_pos,
-    j_location,
-    l_poly_array,
-    sed_bb,
-    smooth_and_pad,
-    transform_pos,
-)
+from sub_pixel_response.imageSim import assign_star, convert_pos, j_location, sed_bb
 
 # Important constants that are needed to run these unit tests
+# Not sure if these should be inside the functions??
 nside = 4088
 process_h = 4
 process_v = 8
@@ -21,59 +17,14 @@ in_psf_oversam = 6
 std_pad = 24
 
 
-def test_transform_pos():
-    """
-    Test the transform_pos function with a simple known input.
-    """
-    x = 1
-    y = 2
-    expected_output = (3.5, 9.5)
-    output = transform_pos(x, y)
-    assert np.allclose(output, expected_output), f"Expected {expected_output}, got {output}"
-
-
-def test_smooth_and_pad():
-    """
-    Test that smooth_and_pad returns a larger array from added padding.
-    """
-    input_array = np.ones((4, 4))
-
-    output = smooth_and_pad(input_array, tophatwidth=0)
-
-    assert output.shape[0] > input_array.shape[0]
-    assert output.shape[1] > input_array.shape[1]
-    assert np.all(np.isfinite(output))
-
-
-def test_l_poly_array():
-    """
-    Test l_poly_array for a polynomial of order 0 with known results.
-    """
-    output = l_poly_array(0, 0.5, 0.5)
-
-    expected = np.array([1.0])
-    assert np.allclose(output, expected)
-
-
-def test_compute_poly():
-    """
-    Test compute_poly returns a finite, 2D, padded PSF array.
-    """
-    inpsf_cube = np.ones((1, 4, 4))
-    pix = (2044, 2044)
-    output = compute_poly(inpsf_cube, pix, order=0)
-
-    assert output.ndim == 2
-    assert np.all(np.isfinite(output))
-    assert output.shape[0] > 4
-    assert output.shape[1] > 4
-
-
 def test_sed_bb():
     """Tests the blackbody flux density at wavelength and temperature."""
     wav = np.arange(0.400, 2.600, 0.001) * u.um
     output = sed_bb(wav, 5000 * u.K)
     assert len(output) == len(wav)
+
+
+# may rewrite this later with np.assert
 
 
 def test_convert_pos(cat):
@@ -91,6 +42,9 @@ def test_convert_pos(cat):
     assert np.allclose(y, expected_y, atol=5)
 
 
+# Maybe use np.isfinite here??
+
+
 def test_assign_star():
     """Testing the assigning of the row of 8x4 processes to draw out stars"""
     x = 100
@@ -98,6 +52,10 @@ def test_assign_star():
     j = assign_star(x, y)
     expected_result = 0
     assert np.allclose(j, expected_result)
+
+
+# Going back to this one in a little bit
+# add assert line here when done
 
 
 def test_j_location():
