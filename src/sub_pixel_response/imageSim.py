@@ -14,6 +14,7 @@ from astropy import units as u
 from astropy.io import fits
 from scipy.signal.windows import tukey
 from scipy.special import legendre
+
 from sub_pixel_response.simio import read_catalog, read_config
 
 """
@@ -146,7 +147,7 @@ def compute_poly(inpsf_cube, pixloc, order=1):
 # More debugging prints
 # print(os.getenv('SLURM_NTASKS'))
 # print(os.getenv('SLURM_CPUS_PER_TASK'))
-ncpu = int(os.getenv("SLURM_NTASKS"))
+ncpu = int(os.getenv("SLURM_NTASKS", 1))
 
 
 def sed_bb(w, T):
