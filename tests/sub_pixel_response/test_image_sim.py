@@ -2,7 +2,7 @@ import galsim
 import galsim.roman
 import numpy as np
 from astropy import units as u
-from sub_pixel_response.imageSim import (
+from sub_pixel_response.imagesim import (
     assign_star,
     compute_poly,
     convert_pos,
@@ -12,7 +12,6 @@ from sub_pixel_response.imageSim import (
     smooth_and_pad,
     transform_pos,
 )
-from sub_pixel_response.simio import read_catalog, read_config
 
 # Important constants that are needed to run these unit tests
 nside = 4088
@@ -79,18 +78,14 @@ def test_sed_bb():
 
 def test_convert_pos():
     """Tests the conversion of RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
-    degrees = galsim.AngleUnit(np.pi / 180)
     wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
     read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
-    mywcs = galsim.wcs.readFromFitsHeader(read_image.header)
-    config_path = "example_test.yaml"
-    config = read_config(config_path)
-    cat = read_catalog(config["starCat"])
-    ra = cat["ra"][0] * degrees
-    dec = cat["dec"][0] * degrees
+    mywcs, origin = galsim.wcs.readFromFitsHeader(read_image.header)
+    ra = 10.208584415642562 * galsim.degrees
+    dec = -44.33853770184239 * galsim.degrees
     x, y = convert_pos(ra, dec, mywcs)
-    expected_x = 2048
-    expected_y = 2048
+    expected_x = 2044.0
+    expected_y = 2044.0
     assert np.allclose(x, expected_x, atol=5)
     assert np.allclose(y, expected_y, atol=5)
 
