@@ -54,6 +54,10 @@ def test_l_poly_array():
     expected = np.array([1.0])
     assert np.allclose(output, expected)
 
+    output = l_poly_array(2, 1, -1)
+    expected = np.array([1.0, 1.0, 1.0, -1.0, -1.0, -1.0, 1.0, 1.0, 1.0])
+    assert np.allclose(output, expected)
+
 
 def test_compute_poly():
     """
