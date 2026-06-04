@@ -281,10 +281,14 @@ def draw_stars(
 
 # Main Execution
 def run_simulation(config_path):
-    """Main function to run the Roman star field image simulation.
-    Parameters    ----------
+    """
+    Main function to run the Roman star field image simulation.
+
+    Parameters
+    ----------
     config_path : str
-    Path to YAML configuration file with simulation parameters."""
+        Path to YAML configuration file with simulation parameters.
+    """
 
     # Read configuration from YAML file
     config = read_config(config_path)
