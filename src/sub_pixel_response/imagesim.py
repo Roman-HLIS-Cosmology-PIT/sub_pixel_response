@@ -170,7 +170,7 @@ def assign_star(x, y):
     # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
     x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
     y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
-    task = y_blue_idx * process_h + x_blue_idx  # fixed this section, will see if this works
+    task = y_blue_idx * process_h + x_blue_idx
     return task
 
 
@@ -202,14 +202,14 @@ def draw_stars(
     big_fft_params,
     x_padding=std_pad,
     y_padding=std_pad,
-):  # Sorry, my code said all of these were undefined, I'll remove this after
+):
     """Draw stars for tile index j into a temporary image section."""
     with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
-        for i in range(nobj):  # do I add nobj here? Or do I remove this completely?
+        for i in range(nobj):
             if task_array[i] != j:
                 continue
             if not is_in_circle[i]:
@@ -282,10 +282,14 @@ def draw_stars(
 
 # Main Execution
 def run_simulation(config_path):
-    """Main function to run the Roman star field image simulation.
-    Parameters    ----------
+    """
+    Main function to run the Roman star field image simulation.
+
+    Parameters
+    ----------
     config_path : str
-    Path to YAML configuration file with simulation parameters."""
+        Path to YAML configuration file with simulation parameters.
+    """
 
     # Read configuration from YAML file
     config = read_config(config_path)
@@ -403,9 +407,7 @@ def run_simulation(config_path):
             if result is not None:
                 print("read if results is not None!")
                 sys.stdout.flush()
-                out_image[
-                    result.bounds
-                ] += result  # Combine incrementally, having error with this line, changed it though
+                out_image[result.bounds] += result
                 print("read out_image += result!")
                 sys.stdout.flush()
         print("ran pool for parallel processing!")
