@@ -34,23 +34,25 @@ def test_transform_pos():
 
 def test_smooth_and_pad():
     """
-    Test that smooth_and_pad returns a larger array from added padding.
+    Test that smooth_and_pad returns a larger array from added padding in the correct shape.
     """
     input_array = np.ones((4, 4))
-
     output = smooth_and_pad(input_array, tophatwidth=0)
+    npad = int(np.ceil(in_psf_oversam + 2))
+    npad += (4 - npad) % 4
+    expected_shape = (input_array.shape[0] + 2 * npad, input_array.shape[1] + 2 * npad,)
 
     assert output.shape[0] > input_array.shape[0]
     assert output.shape[1] > input_array.shape[1]
     assert np.all(np.isfinite(output))
+    assert output.shape == expected_shape
 
 
 def test_l_poly_array():
     """
-    Test l_poly_array for a polynomial of order 0 with known results.
+    Test l_poly_array for a polynomial of order 0 and order 2with known results.
     """
     output = l_poly_array(0, 0.5, 0.5)
-
     expected = np.array([1.0])
     assert np.allclose(output, expected)
 
@@ -61,16 +63,19 @@ def test_l_poly_array():
 
 def test_compute_poly():
     """
-    Test compute_poly returns a finite, 2D, padded PSF array.
+    Test compute_poly returns a finite, 2D, padded PSF array of the correct shape.
     """
     inpsf_cube = np.ones((1, 4, 4))
     pix = (2044, 2044)
     output = compute_poly(inpsf_cube, pix, order=0)
+    expected = smooth_and_pad(np.ones((4, 4)), tophatwidth=in_psf_oversam,) / 64
 
     assert output.ndim == 2
     assert np.all(np.isfinite(output))
     assert output.shape[0] > 4
     assert output.shape[1] > 4
+    assert output.shape == expected.shape
+    assert np.allclose(output, expected)
 
 
 def test_sed_bb():
