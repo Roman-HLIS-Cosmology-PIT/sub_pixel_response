@@ -2,6 +2,8 @@ import galsim
 import galsim.roman
 import numpy as np
 from astropy import units as u
+from astropy import wcs
+from astropy.io import fits
 from sub_pixel_response.imagesim import (
     assign_star,
     compute_poly,
@@ -40,7 +42,10 @@ def test_smooth_and_pad():
     output = smooth_and_pad(input_array, tophatwidth=0)
     npad = int(np.ceil(in_psf_oversam + 2))
     npad += (4 - npad) % 4
-    expected_shape = (input_array.shape[0] + 2 * npad, input_array.shape[1] + 2 * npad,)
+    expected_shape = (
+        input_array.shape[0] + 2 * npad,
+        input_array.shape[1] + 2 * npad,
+    )
 
     assert output.shape[0] > input_array.shape[0]
     assert output.shape[1] > input_array.shape[1]
@@ -68,7 +73,13 @@ def test_compute_poly():
     inpsf_cube = np.ones((1, 4, 4))
     pix = (2044, 2044)
     output = compute_poly(inpsf_cube, pix, order=0)
-    expected = smooth_and_pad(np.ones((4, 4)), tophatwidth=in_psf_oversam,) / 64
+    expected = (
+        smooth_and_pad(
+            np.ones((4, 4)),
+            tophatwidth=in_psf_oversam,
+        )
+        / 64
+    )
 
     assert output.ndim == 2
     assert np.all(np.isfinite(output))
@@ -87,9 +98,81 @@ def test_sed_bb():
 
 def test_convert_pos():
     """Tests the conversion of RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
-    wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
-    read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
-    mywcs, origin = galsim.wcs.readFromFitsHeader(read_image.header)
+    wcsstring = """
+    XTENSION= 'IMAGE   '           / Image extension                                
+    BITPIX  =                  -64 / array data type                                
+    NAXIS   =                    2 / number of array dimensions                     
+    NAXIS1  =                 4088                                                  
+    NAXIS2  =                 4088                                                  
+    PCOUNT  =                    0 / number of parameters                           
+    GCOUNT  =                    1 / number of groups                               
+    EXPTIME =                139.8                                                  
+    MJD-OBS =         62471.492045                                                  
+    DATE-OBS= '2029-12-01 11:48:32.688000'                                          
+    FILTER  = 'H158    '                                                            
+    ZPTMAG  =   16.800870916182618                                                  
+    GS_XMIN =                    1 / GalSim image minimum x coordinate              
+    GS_YMIN =                    1 / GalSim image minimum y coordinate              
+    GS_WCS  = 'GSFitsWCS'          / GalSim WCS name                                
+    CTYPE1  = 'RA---TAN-SIP'                                                        
+    CTYPE2  = 'DEC--TAN-SIP'                                                        
+    CRPIX1  =               2044.0                                                  
+    CRPIX2  =               2044.0                                                  
+    CD1_1   = 3.01922901086850E-05                                                  
+    CD1_2   = 1.45559107465136E-06                                                  
+    CD2_1   = -8.3872456214526E-07                                                  
+    CD2_2   = 2.93576778237758E-05                                                  
+    CUNIT1  = 'deg     '                                                            
+    CUNIT2  = 'deg     '                                                            
+    CRVAL1  =   10.208584415642562                                                  
+    CRVAL2  =   -44.33853770184239                                                  
+    A_ORDER =                    4                                                  
+    A_0_2   =      3.851828071E-10                                                  
+    A_0_3   =      5.492409696E-14                                                  
+    A_0_4   =      3.825353128E-18                                                  
+    A_1_1   =     -1.232185377E-09                                                  
+    A_1_2   =     -9.743979693E-14                                                  
+    A_1_3   =       2.66249338E-17                                                  
+    A_2_0   =      3.802404353E-10                                                  
+    A_2_1   =     -9.031463862E-14                                                  
+    A_2_2   =     -6.271302544E-17                                                  
+    A_3_0   =      2.325088216E-14                                                  
+    A_3_1   =      2.521067326E-17                                                  
+    A_4_0   =      1.425534054E-17                                                  
+    B_ORDER =                    4                                                  
+    B_0_2   =     -1.175573884E-09                                                  
+    B_0_3   =      1.303875779E-14                                                  
+    B_0_4   =      1.602230927E-17                                                  
+    B_1_1   =     -1.793186122E-11                                                  
+    B_1_2   =     -1.532973486E-13                                                  
+    B_1_3   =     -3.870326104E-17                                                  
+    B_2_0   =      5.982538571E-11                                                  
+    B_2_1   =      1.443685076E-13                                                  
+    B_2_2   =      1.727380843E-17                                                  
+    B_3_0   =      2.897221014E-14                                                  
+    B_3_1   =      2.713725388E-17                                                  
+    B_4_0   =      1.591294122E-18                                                  
+    EQUINOX =               2000.0                                                  
+    WCSAXES =                    2                                                  
+    WCSNAME = 'wfiwcs_20210204_d2'                                                  
+    TELESCOP= 'Roman   '                                                            
+    INSTRUME= 'WFC     '                                                            
+    RA_TARG =               10.489                                                  
+    DEC_TARG=             -44.4299                                                  
+    PA_OBSY =  -118.00999999999999                                                  
+    PA_FPA  =   1.9899999999999998                                                  
+    SCA_NUM =                   14                                                  
+    ORIENTAT=   2.1863008787824225                                                  
+    LONPOLE =                180.0                                                  
+    SKY_MEAN=                 74.0                                                  
+    EXTNAME = 'SCI     '           / extension name                                 
+    EXTVER  =                    1 / extension value                                
+    """
+    myheader = fits.Header.fromstring(
+        wcsstring,
+        sep="\n",
+    )
+    mywcs = galsim.AstropyWCS(header=myheader)
     ra = 10.208584415642562 * galsim.degrees
     dec = -44.33853770184239 * galsim.degrees
     x, y = convert_pos(ra, dec, mywcs)
