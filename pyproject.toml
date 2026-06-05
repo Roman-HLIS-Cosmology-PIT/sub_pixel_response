@@ -3,12 +3,15 @@
 name = "sub_pixel_response"
 license = "MIT"
 license-files = ["LICENSE"]
-readme = "README.md"
+readme = "README.rst"
 authors = [
     { name = "Kara DiLudovico", email = "diludovico.2@buckeyemail.osu.edu" },
     { name = "Nihar Dalal", email = "dalal.64@buckeyemail.osu.edu" },
     { name = "Christopher Hirata", email = "hirata.10@osu.edu" },
     { name = "Chloe Smith", email = "smith.16328@buckeyemail.osu.edu"}
+]
+maintainers = [
+    { name = "Roman High Latitude Imaging Survey Cosmology Project Infrastructure Team" }
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -17,24 +20,18 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
 ]
-dynamic = ["version"]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 requires-python = ">=3.12"
-dependencies = [
-]
+
+[tool.setuptools.dynamic]
+dependencies = { file = "requirements.txt" }
 
 [project.urls]
 "Source Code" = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response"
 
 # On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
-[project.optional-dependencies]
-dev = [
-    "asv[virtualenv]==0.6.5", # Used to compute performance benchmarks
-    "jupyter", # Clears output from Jupyter notebooks
-    "pre-commit", # Used to run checks before finalizing a git commit
-    "pytest",
-    "pytest-cov", # Used to report total code coverage
-    "ruff", # Used for static linting of files
-]
+[tool.setuptools.dynamic.optional-dependencies]
+dev = { file = "requirements-dev.txt" }
 
 [build-system]
 requires = [

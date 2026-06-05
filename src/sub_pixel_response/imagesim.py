@@ -1,4 +1,3 @@
-import argparse
 import datetime
 import functools
 import os
@@ -9,14 +8,14 @@ import astropy.io as aio
 import galsim
 import galsim.roman
 import numpy as np
-import pandas as pd
 import pytz
-import yaml
 from astropy import constants as const
 from astropy import units as u
 from astropy.io import fits
 from scipy.signal.windows import tukey
 from scipy.special import legendre
+
+from sub_pixel_response.simio import read_catalog, read_config
 
 """
 Roman Telescope Star Field Image Simulator
@@ -54,8 +53,6 @@ process_h = 4
 process_v = 8
 nside = 4088
 std_pad = 24
-print("read global data!")
-sys.stdout.flush()
 
 
 def transform_pos(x, y, oversam=6):
@@ -63,10 +60,6 @@ def transform_pos(x, y, oversam=6):
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
     return (X, Y)
-
-
-print("transform_pos read!")
-sys.stdout.flush()
 
 
 def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
@@ -113,10 +106,6 @@ def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
     return outArray
 
 
-print("returned outArray and read smooth_and_pad function!")
-sys.stdout.flush()
-
-
 def l_poly_array(PORDER, u_, v_):
     """
     Generates a length (PORDER+1)**2 array of the Legendre polynomials
@@ -148,10 +137,6 @@ def l_poly_array(PORDER, u_, v_):
     return arr
 
 
-print("returned l_poly_array!")
-sys.stdout.flush()
-
-
 def compute_poly(inpsf_cube, pixloc, order=1):
     """Compute PSF from polynomial PSF cube at given detector pixel location."""
     lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
@@ -159,77 +144,10 @@ def compute_poly(inpsf_cube, pixloc, order=1):
     return this_psf
 
 
-print("returned this_psf and read l_poly_array function!")
-sys.stdout.flush()
-
 # More debugging prints
 # print(os.getenv('SLURM_NTASKS'))
 # print(os.getenv('SLURM_CPUS_PER_TASK'))
-ncpu = int(os.getenv("SLURM_NTASKS"))
-print(ncpu)
-sys.stdout.flush()
-
-
-def read_config(config_file):
-    """Read configuration from YAML file"""
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
-    return config
-
-
-print("returned config and read read_config function!")
-sys.stdout.flush()
-
-
-def read_catalog(file_path, file_type=None):
-    """
-    Read a star catalog and return RA, Dec, and H-band magnitude.
-    """
-
-    # Determining file type
-    if file_type is None:
-        file_type = "fits" if file_path.lower().endswith(".fits") else "ascii"
-
-    # FITS catalogs (Besancon)
-    if file_type == "fits":
-        with fits.open(file_path) as hdul:
-            data = hdul[1].data
-            ra = data["RAJ2000"]
-            dec = data["DECJ2000"]
-            mag_H = data["H"]
-
-    # ASCII catalogs (Anderson)
-    elif file_type == "ascii":
-        with open(file_path, "r") as f:
-            for line in f:
-                if "RA" in line and "Dec" in line:
-                    # Remove the '#' and split the line into a list of names
-                    cols = line.replace("#", "").split()
-                    break
-
-        df = pd.read_table(file_path, sep=r"\s+", comment="#", names=cols)
-
-        ra = df["RA"]
-        dec = df["Dec"]
-
-        # Using Anderson H-band column
-        mag_H = df["m160_u"] + 1.39  # This is converting from Vega to AB
-
-    else:
-        raise ValueError("Unsupported file type")
-
-    return {"ra": ra, "dec": dec, "mag_H": mag_H}
-
-
-def make_parser():
-    """Create argument parser"""
-    parser = argparse.ArgumentParser(description="Star Simulation Configuration")
-    parser.add_argument("config_file", help="Path to YAML configuration file")
-    return parser
-
-
-print("read make_parser and returned parser!")
-sys.stdout.flush()
+ncpu = int(os.getenv("SLURM_NTASKS", 1))
 
 
 def sed_bb(w, T):
@@ -239,19 +157,11 @@ def sed_bb(w, T):
     ).decompose()
 
 
-print("retuned value and read sed_bb function!")
-sys.stdout.flush()
-
-
 def convert_pos(ra, dec, wcs):
     """Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
     worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
     imageCenter = wcs.posToImage(worldCenter)
     return (imageCenter.x, imageCenter.y)
-
-
-print("returned image center x, y!")
-sys.stdout.flush()
 
 
 def assign_star(x, y):
@@ -260,12 +170,8 @@ def assign_star(x, y):
     # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
     x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
     y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
-    task = y_blue_idx * process_h + x_blue_idx  # fixed this section, will see if this works
+    task = y_blue_idx * process_h + x_blue_idx
     return task
-
-
-print("returned task for assign_star!")
-sys.stdout.flush()
 
 
 # j for given process number
@@ -279,41 +185,6 @@ def j_location(process, x_padding=0, y_padding=0):
         xmin_j - x_padding, xmax_j + x_padding, ymin_j - y_padding, ymax_j + y_padding
     )
     return process_bounds
-
-
-print("read j_location and returned process_bounds!")
-sys.stdout.flush()
-
-
-def eqn(matrix, soln):
-    """
-    Solves a matrix equation using the inverse matrix.
-
-    Parameters
-    ----------
-    matrix: np.array
-        Input coefficient matrix.
-    soln: np.array
-        Solution vector or matrix
-    Returns:
-    ----------
-    np.array
-        The result of the inverse matrix multiplied by the
-        solution vector or matrix.
-    """
-    return matrix**-1 * soln
-
-    # def OffsetPixel([pixeloffsets], xgrid, ygrid):
-    """mat = expectVal(x, 1, 0)
-       solveEqn(mat, ..., pixeloffsets)
-       gives a, b, c, d, e, f
-       compute and return wi: the weights
-       also try to return expectation values later
-       utilizing function above
-       may need to write another function here"""
-
-
-# Delete functions above later, this needs to be done in separate .py file
 
 
 def draw_stars(
@@ -331,14 +202,14 @@ def draw_stars(
     big_fft_params,
     x_padding=std_pad,
     y_padding=std_pad,
-):  # Sorry, my code said all of these were undefined, I'll remove this after
+):
     """Draw stars for tile index j into a temporary image section."""
     with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
-        for i in range(nobj):  # do I add nobj here? Or do I remove this completely?
+        for i in range(nobj):
             if task_array[i] != j:
                 continue
             if not is_in_circle[i]:
@@ -409,19 +280,19 @@ def draw_stars(
     sys.stdout.flush()
 
 
-print("read through draw_stars function!")
-sys.stdout.flush()
-
 # Main Execution
-if __name__ == "__main__":
-    # Parse command line to get config file path
-    parser = make_parser()
-    args = parser.parse_args()
-    print("read parser!")
-    sys.stdout.flush()
+def run_simulation(config_path):
+    """
+    Main function to run the Roman star field image simulation.
+
+    Parameters
+    ----------
+    config_path : str
+        Path to YAML configuration file with simulation parameters.
+    """
 
     # Read configuration from YAML file
-    config = read_config(args.config_file)
+    config = read_config(config_path)
     print("read config!")
     sys.stdout.flush()
 
@@ -436,13 +307,15 @@ if __name__ == "__main__":
     degrees = galsim.AngleUnit(np.pi / 180)
     wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
     read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
-    mybounds = read_image.bounds
+    # mybounds = read_image.bounds
     read_image.header["CRVAL1"] = float(config["raCen"])
     read_image.header["CRVAL2"] = float(config["decCen"])
     read_image.header["LONPOLE"] = float(config["LONPOLE"])
     mywcs, neworigin = galsim.wcs.readFromFitsHeader(read_image.header)
+    print(mywcs)
     print("read from degrees to mywcs, neworigin!")
     sys.stdout.flush()
+    exit()
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
@@ -534,9 +407,7 @@ if __name__ == "__main__":
             if result is not None:
                 print("read if results is not None!")
                 sys.stdout.flush()
-                out_image[
-                    result.bounds
-                ] += result  # Combine incrementally, having error with this line, changed it though
+                out_image[result.bounds] += result
                 print("read out_image += result!")
                 sys.stdout.flush()
         print("ran pool for parallel processing!")
@@ -558,3 +429,8 @@ if __name__ == "__main__":
     out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
+
+
+# Main Execution
+if __name__ == "__main__":
+    run_simulation(sys.argv[1])

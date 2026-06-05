@@ -182,12 +182,3 @@ def process_image(oversampledImage, offsets, imageSize=4096, oversample=6):
     downsampledImage = np.sum(reshapedImage * weights, axis=(2, 3))
 
     return downsampledImage
-
-
-if __name__ == "__main__":
-    # Tests the function with a simple test
-    offsets = np.zeros((4096, 4096, 6))
-    offsets[0, 0, :] = np.array([1, 0, 0, 0, 1 / 12 * (1 - 1 / 36), 1 / 12 * (1 - 1 / 36)])
-    print("Passing in offset array", offsets[0, 0, :])
-    blah = compute_pixel_weights(offsets)
-    print("Computed Weights for the first pixel", blah[0, 0, :, :])
