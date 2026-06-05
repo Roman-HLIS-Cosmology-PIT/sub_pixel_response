@@ -177,13 +177,22 @@ def test_convert_pos():
         sep="\n",
     )
     mywcs = galsim.AstropyWCS(header=myheader)
-    ra = 10.208584415642562 * galsim.degrees
-    dec = -44.33853770184239 * galsim.degrees
-    x, y = convert_pos(ra, dec, mywcs)
-    expected_x = 2044.0
-    expected_y = 2044.0
-    assert np.allclose(x, expected_x, atol=5)
-    assert np.allclose(y, expected_y, atol=5)
+    # Testing for random part of top edge of image first
+    ra_1 = 10.2124400 * galsim.degrees
+    dec_1 = -44.2785210 * galsim.degrees
+    x_1, y_1 = convert_pos(ra_1, dec_1, mywcs)
+    expected_x_1 = 2035.877414376633
+    expected_y_1 = 4087.1269146931413
+    assert np.allclose(x_1, expected_x_1, atol=1)
+    assert np.allclose(y_1, expected_y_1, atol=1)
+    # Now testing for random part of right edge of image
+    ra_2 = 10.2950082 * galsim.degrees
+    dec_2 = -44.3375139 * galsim.degrees
+    x_2, y_2 = convert_pos(ra_2, dec_2, mywcs)
+    expected_x_2 = 4085.879172318449
+    expected_y_2 = 2135.1264219908003
+    assert np.allclose(x_2, expected_x_2, atol=1)
+    assert np.allclose(y_2, expected_y_2, atol=1)
 
 
 def test_assign_star():
