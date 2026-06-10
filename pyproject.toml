@@ -1,0 +1,101 @@
+
+[project]
+name = "sub_pixel_response"
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.rst"
+authors = [
+    { name = "Kara DiLudovico", email = "diludovico.2@buckeyemail.osu.edu" },
+    { name = "Nihar Dalal", email = "dalal.64@buckeyemail.osu.edu" },
+    { name = "Christopher Hirata", email = "hirata.10@osu.edu" },
+    { name = "Chloe Smith", email = "smith.16328@buckeyemail.osu.edu"}
+]
+maintainers = [
+    { name = "Roman High Latitude Imaging Survey Cosmology Project Infrastructure Team" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+]
+dynamic = ["version", "dependencies", "optional-dependencies"]
+requires-python = ">=3.12"
+
+[tool.setuptools.dynamic]
+dependencies = { file = "requirements.txt" }
+
+[project.urls]
+"Source Code" = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response"
+
+# On a mac, install optional dependencies with `pip install '.[dev]'` (include the single quotes)
+[tool.setuptools.dynamic.optional-dependencies]
+dev = { file = "requirements-dev.txt" }
+
+[build-system]
+requires = [
+    "setuptools>=82.0.1", # Used to build and package the Python project
+    "setuptools_scm>=10.0.5", # Gets release version from git. Makes it available programmatically
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/sub_pixel_response/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+    "src",
+    "docs",
+]
+addopts = "--doctest-modules --doctest-glob=*.rst"
+
+[tool.ruff]
+line-length = 110
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pep8-naming
+    "N",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # docstrings
+    "D101",
+    "D102",
+    "D103",
+    "D106",
+    "D206",
+    "D207",
+    "D208",
+    "D300",
+    "D417",
+    "D419",
+    # Numpy v2.0 compatibility
+    "NPY201",
+]
+ignore = [
+    "UP006", # Allow non standard library generics in type hints
+    "UP007", # Allow Union in type hints
+    "SIM114", # Allow if with same arms
+    "B028", # Allow default warning level
+    "SIM117", # Allow nested with
+    "UP015", # Allow redundant open parameters
+    "UP028", # Allow yield in for loop
+    "N806", # Allow for capital letters in variable names
+    "N803", # Allow for capital letters in argument names
+]
+
+
+[tool.coverage.run]
+omit=["src/sub_pixel_response/_version.py"]

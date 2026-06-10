@@ -1,0 +1,184 @@
+import time
+
+import numpy as np
+
+
+def compute_exp_val(oversam_pix_grid, xPower, yPower):
+    """
+    Writing a function that computes the expectation value for each component/term.
+
+    Parameters
+    ----------
+    oversam_pix_grid : (np.ndarray of float, np.ndarray of float)
+        The x (first) and y (second) coordinates of the subpixel grid points.
+    xPower, yPower : int
+        The exponents of x and y.
+
+    Returns
+    -------
+    float
+        The mean value of x^xPower * y^yPower over the given points.
+
+    """
+
+    x, y = oversam_pix_grid
+    eval_x = np.power(x, xPower)
+    eval_y = np.power(y, yPower)
+    return np.mean(eval_x * eval_y)
+
+
+def compute_pixel_weights(offsets, oversam=6):
+    """
+    Computes subpixel weighting coefficients
+    for each pixel using expectation values.
+
+    Parameters
+    ----------
+    offsets : np.ndarray
+        Array of shape (image_size, image_size, 6) containing per-pixel offset values.
+    oversam : int
+        Subpixel sampling factor.
+
+    Returns
+    -------
+    np.ndarray
+        Weight array of shape (image_size, image_size, oversam, oversam)
+        representing subpixel contribution weights for each pixel.
+    """
+    x_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
+    y_array = np.linspace(-0.5 + 1 / (2 * oversam), 0.5 - 1 / (2 * oversam), oversam)
+    # Locally define meshGrid for consistency with compute_exp_val calls within this function
+    meshGrid = np.meshgrid(x_array, y_array)
+    sub_pixel_x, sub_pixel_y = meshGrid  # x and y now refer to the (6,6) sub-pixel grid
+
+    start = time.time()
+    Ex2 = compute_exp_val(meshGrid, 2, 0)
+    Ey2 = compute_exp_val(meshGrid, 0, 2)
+    Exy = compute_exp_val(meshGrid, 1, 1)
+    Ex3 = compute_exp_val(meshGrid, 3, 0)
+    Ey3 = compute_exp_val(meshGrid, 0, 3)
+    Ex2y = compute_exp_val(meshGrid, 2, 1)
+    Exy2 = compute_exp_val(meshGrid, 1, 2)
+    Ex2y2 = compute_exp_val(meshGrid, 2, 2)
+    Ex3y = compute_exp_val(meshGrid, 3, 1)
+    Exy3 = compute_exp_val(meshGrid, 1, 3)
+    Ex4 = compute_exp_val(meshGrid, 4, 0)
+    Ey4 = compute_exp_val(meshGrid, 0, 4)
+    end = time.time()
+    print("Time taken to compute expectation vals = ", (end - start))
+    # The coefficient matrix built from the expectation values
+    M = np.array(
+        [
+            [1, 0, 0, Exy, Ex2, Ey2],
+            [0, Ex2, Exy, Ex2y, Ex3, Exy2],
+            [0, Exy, Ey2, Exy2, Ex2y, Ey3],
+            [Exy, Ex2y, Exy2, Ex2y2, Ex3y, Exy3],
+            [Ex2, Ex3, Ex2y, Ex3y, Ex4, Ex2y2],
+            [Ey2, Exy2, Ey3, Exy3, Ex2y2, Ey4],
+        ]
+    )
+
+    # offsets is (4096, 4096, 6). We want to solve M * coeffs = deltas for each (4096, 4096) pixel.
+    # Reshape offsets to (N, 6) where N = 4096 * 4096.
+    offsets_flat = offsets.reshape(-1, 6)  # Shape becomes (4096*4096, 6)
+
+    # For np.linalg.solve(A, B) where A is (M,M) and B is (M,K)
+    # we need to transpose offsets_flat to (6, 4096*4096)
+    # so that M=6 and K=4096*4096
+    start = time.time()
+    coeff_flat_solved = np.linalg.solve(M, offsets_flat.T)  # Result shape (6, 4096*4096)
+    end = time.time()
+    print("Time taken to solve equations = ", (end - start))
+
+    # Transpose back and reshape to original (4096, 4096, 6) structure for coefficients
+    coeffArray = coeff_flat_solved.T.reshape(offsets.shape[0], offsets.shape[1], 6)  # Shape (4096, 4096, 6)
+
+    start = time.time()
+
+    # Build a basis of powers of subpixel x,y arrays to speed up computation
+    sub_pixel_basis = np.stack(
+        [
+            np.ones_like(sub_pixel_x),
+            sub_pixel_x,
+            sub_pixel_y,
+            sub_pixel_x * sub_pixel_y,
+            sub_pixel_x**2,
+            sub_pixel_y**2,
+        ],
+        axis=-1,
+    )  # Shape (oversam, oversam, 6) -> (6, 6, 6)
+
+    # Use np.einsum for efficient calculation of the weighted sum.
+    # 'ijk' refers to coeffArray (4096, 4096, 6) (pixel_row, pixel_col, coefficient_type)
+    # 'lmk' refers to sub_pixel_basis (6, 6, 6) (sub_pixel_row, sub_pixel_col, coefficient_type)
+    # The result 'ijlm' will be (4096, 4096, 6, 6) (pixel_row, pixel_col, sub_pixel_row, sub_pixel_col)
+    weighted_sum_terms = np.einsum("ijk, lmk -> ijlm", coeffArray, sub_pixel_basis)
+
+    # Add the constant term '1'
+    weight_array = weighted_sum_terms
+
+    end = time.time()
+    print("Time to build weight array = ", (end - start))
+
+    return weight_array  # This will be (4096, 4096, 6, 6) as desired
+
+
+def generate_offset_array(offsets, imageSize=4096, oversample=6):
+    """
+    Expands a smaller offset array into a full image-sized offset array.
+
+    Parameters
+    ----------
+    offsets : np.ndarray
+        Input offset array of shape (imageSize, imageSize, oversample).
+    imageSize : int
+        Size of the image in pixels.
+    oversample : int
+        Number of subpixel offsets per pixel.
+
+    Returns
+    -------
+    np.ndarray
+        Expanded offset array of shape (imageSize, imageSize, oversample).
+    """
+    # This function will copy a single array of offsets into 4096*4096*6 array to be used for testing.
+    offsetArray = np.zeros((imageSize, imageSize, oversample))
+    offsetArray[:imageSize, :imageSize, :] = offsets
+    return offsetArray
+
+
+def process_image(oversampledImage, offsets, imageSize=4096, oversample=6):
+    """
+    Downsamples an oversampled image using the computed subpixel weights.
+
+    Parameters
+    ----------
+    oversampledImage : np.ndarray
+        Input image of shape (imageSize * oversample, imageSize * oversample).
+    offsets : np.ndarray
+        Offset array of shape (imageSize, imageSize, oversample).
+    imageSize : int
+        Size of the final output image.
+    oversample : int
+        Subsampling factor per pixel.
+
+    Returns
+    -------
+    np.ndarray
+        Downsampled image of shape (imageSize, imageSize).
+    """
+    # oversampledImage is a (6*4096)^2 image
+    # offsets refer to a (4096*4096*6) array that contains deltax, deltay etc for each pixel
+    # want to return a single 4096*4096 image/array
+
+    # First need to reshape image into (4096, 4096, 6, 6)
+    reshapedImage = oversampledImage.reshape(imageSize, oversample, imageSize, oversample).transpose(
+        0, 2, 1, 3
+    )
+
+    weights = compute_pixel_weights(offsets, oversam=oversample)
+    # should return a set of weights for each pixel (4088*4088*6*6)
+
+    downsampledImage = np.sum(reshapedImage * weights, axis=(2, 3))
+
+    return downsampledImage
