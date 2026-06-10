@@ -10,13 +10,14 @@ d_telescope = 2.37  # meters
 
 # conversions
 ab_minus_vega = {"R": 0.10, "J": 0.91, "H": 1.39, "K": 1.89}
-wls = {"R": 0.61, "J": 1.24, "H": 1.60, "K": 2.16}
+wls = {"R": 0.61, "J": 1.24, "H": 1.60, "K": 2.16, "W": 1.46}
 
 # Roman information
-target_bands = [62, 87, 106, 129, 158, 184, 213]  # in units of 10 nm
-areas = [0.779, 0.565, 0.613, 0.615, 0.617, 0.401, 0.387]  # integral A d lambda/lambda in meter^2
-peakflux = [0.495, 0.484, 0.440, 0.369, 0.291, 0.214, 0.171]  # max fraction of flux in one pixel
-bkgnd = [0.253, 0.254, 0.280, 0.270, 0.292, 0.296, 4.498]  # e/p/s
+target_bands = [62, 87, 106, 129, 158, 184, 213, 146]  # in units of 10 nm
+areas = [0.779, 0.565, 0.613, 0.615, 0.617, 0.401, 0.387, 1.891]  # integral A d lambda/lambda in meter^2
+peakflux = [0.495, 0.484, 0.440, 0.369, 0.291, 0.214, 0.171, 0.345]  # max fraction of flux in one pixel
+neffpix = [3.80, 4.04, 4.83, 6.63, 9.65, 15.52, 20.14, 7.37]  # effective number of pixels in ePSF
+bkgnd = [0.253, 0.254, 0.280, 0.270, 0.292, 0.296, 4.498, 1.811]  # e/p/s
 read = 18.0  # CDS read noise in e
 
 
@@ -175,6 +176,18 @@ class StarCat:
             raise ValueError(f"{ind:d} is not a valid band, choose from {target_bands}.")
         return bkgnd[ind]
 
+    @classmethod
+    def _get_neffpix(cls, band):
+        """Gets the effective number of pixels in a PSF in a band."""
+        # figure out which index
+        ind = -1
+        for j in range(len(target_bands)):
+            if band == target_bands[j]:
+                ind = j
+        if ind == -1:
+            raise ValueError(f"{ind:d} is not a valid band, choose from {target_bands}.")
+        return neffpix[ind]
+
     def fisher_properties(self, band, crmin, crmax, t, n_exp):
         """
         Computes Fisher information properties.
@@ -267,7 +280,7 @@ class StarCat:
         return ivars, sigma_epsf
 
 
-def fisher(infile, seed=None):
+def fisher(infile, seed=None, t_exp=63.25, n_exp=2900):
     """
     Builds the Fisher information from a text file.
 
@@ -288,6 +301,10 @@ def fisher(infile, seed=None):
         The input file.
     seed : int, optional
         The random number generator seed.
+    t_exp : float, optional
+        The exposure time in seconds.
+    n_exp : int, optional
+        Number of exposures.
 
     Returns
     -------
@@ -305,18 +322,19 @@ def fisher(infile, seed=None):
     for j in range(N):
         print(f"{cr[j]:10.4e} {hist[j]:10.4e}")
 
-    for b in [106, 129, 158, 184, 213]:
+    for b in [106, 129, 158, 184, 213, 146]:
         print(f"=== {b:03d} ===")
 
         # now choose a particular size region
         Q = 1e-8 * b / d_telescope / (wfi_pix / 60.0 / 180.0 * np.pi)
         print("Q =", Q)
-        fracpix = Q**2 / np.pi
+        fracpix = Q**2 / np.pi  # fraction of a pixel that is one "resolution element" of the sensitivity map
+        nres = StarCat._get_neffpix(b) / fracpix  # number of resolution elements in an ePSF
 
-        ivar_mean, ivar_std = cat.fisher_properties(b, 5.0, 1000.0, 63.25, 2900)
+        ivar_mean, ivar_std = cat.fisher_properties(b, 5.0, 1000.0, t_exp, n_exp)
         print(ivar_mean * fracpix, ivar_std * np.sqrt(fracpix))
-        ivars, sigma_epsf = cat.fisher_realizations(b, 5.0, 1000.0, 63.25, 2900, fracpix, 50000)
-        print(np.mean(ivars), np.std(ivars), sigma_epsf)
+        ivars, sigma_epsf = cat.fisher_realizations(b, 5.0, 1000.0, t_exp, n_exp, fracpix, 50000)
+        print(np.mean(ivars), np.std(ivars), sigma_epsf, sigma_epsf / np.sqrt(nres))
 
 
 if __name__ == "__main__":
