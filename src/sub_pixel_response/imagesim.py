@@ -192,8 +192,6 @@ def draw_stars(
     cat,
     wcs,
     sca_num,
-    nobj,
-    is_in_circle,
     task_array,
     eff_area_table,
     transmission_curve,
@@ -207,12 +205,13 @@ def draw_stars(
     with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
+        nobj = len(cat["ra"])
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
         for i in range(nobj):
             if task_array[i] != j:
                 continue
-            if not is_in_circle[i]:
+            if not cat.get("is_in_circle", True)[i]:
                 continue
 
             # First, calculating position
