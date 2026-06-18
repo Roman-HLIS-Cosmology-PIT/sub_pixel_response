@@ -211,7 +211,7 @@ def draw_stars(
         for i in range(nobj):
             if task_array[i] != j:
                 continue
-            if not cat.get("is_in_circle", True)[i]:
+            if "is_in_circle" in cat and not cat["is_in_circle"][i]:
                 continue
 
             # First, calculating position
@@ -402,10 +402,7 @@ def run_simulation(config_path):
         is_in_circle = cos_theta > np.cos((0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180)
         print("read if not config randomPos for with fits.open starCat!")
         sys.stdout.flush()
-    else:
-        is_in_circle = np.ones(nobj, dtype=bool)
-        print("read else statement for is_in_circle!")
-        sys.stdout.flush()
+        cat["is_in_circle"] = is_in_circle
 
     # Telescope exposure/SCA
     sca_num = int(config["SCA"])
@@ -449,8 +446,6 @@ def run_simulation(config_path):
         cat=cat,
         wcs=mywcs,
         sca_num=sca_num,
-        nobj=nobj,
-        is_in_circle=is_in_circle,
         task_array=task_array,
         eff_area_table=eff_area_table,
         transmission_curve=transmission_curve,
