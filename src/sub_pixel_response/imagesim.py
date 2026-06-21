@@ -57,6 +57,45 @@ GLB_DATA = {
 std_pad = 24  # C.H.: I'm waiting on moving this.
 
 
+class GlobalContext:
+    """
+    Context manager for the global data.
+
+    This is intended to be used in the form:
+
+    .. code-block: python
+
+        with GlobalContext({"nside": 2040}):
+
+            # ... stuff with nside equal to 2040, e.g., if this were JWST data
+            pass
+
+        # nside will be set back to 4088 when you exit the "with"
+
+    Parameters
+    ----------
+    modpars : dict
+        Which parameters to change.
+
+    """
+
+    def __init__(self, modpars):
+        self.modpars = modpars.copy()
+
+    def __enter__(self):
+        self.oldpars = GLB_DATA.copy()
+        for k in self.modpars:
+            if k not in GLB_DATA:
+                raise ValueError("Tried to set a key that doesn't exist!")
+            GLB_DATA[k] = self.modpars[k]
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for k in self.modpars:
+            GLB_DATA[k] = self.oldpars[k]
+        return False
+
+
 def transform_pos(x, y, oversam=6):
     """Convert detector pixel coordinates into oversampled pixel space."""
     X = oversam * (x - 0.5) + 0.5
