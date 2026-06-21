@@ -47,12 +47,14 @@ def print_report(s):
 
 
 # Global data and constants
-in_psf_oversam = 6
-f_nu_ref = 3.631e-23 * (u.W / u.m**2) / u.Hz  # W/m^2/Hz
-process_h = 4
-process_v = 8
-nside = 4088
-std_pad = 24
+GLB_DATA = {
+    "in_psf_oversam": 6,
+    "f_nu_ref": 3.631e-23 * (u.W / u.m**2) / u.Hz,  # W/m^2/Hz
+    "process_h": 4,
+    "process_v": 8,
+    "nside": 4088,
+}
+std_pad = 24  # C.H.: I'm waiting on moving this.
 
 
 def transform_pos(x, y, oversam=6):
@@ -80,7 +82,9 @@ def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
 
     """
 
-    npad = int(np.ceil(tophatwidth + in_psf_oversam + 2))  # 6 from oversampling, 2 for safety margin
+    npad = int(
+        np.ceil(tophatwidth + GLB_DATA["in_psf_oversam"] + 2)
+    )  # 6 from oversampling, 2 for safety margin
     npad += (4 - npad) % 4  # make a multiple of 4
     (ny, nx) = np.shape(inArray)
     nyy = ny + npad * 2
@@ -140,7 +144,9 @@ def l_poly_array(PORDER, u_, v_):
 def compute_poly(inpsf_cube, pixloc, order=1):
     """Compute PSF from polynomial PSF cube at given detector pixel location."""
     lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
-    this_psf = smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=in_psf_oversam) / 64
+    this_psf = (
+        smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=GLB_DATA["in_psf_oversam"]) / 64
+    )
     return this_psf
 
 
@@ -166,21 +172,25 @@ def convert_pos(ra, dec, wcs):
 
 def assign_star(x, y):
     """Assigning row of 8x4 processes to draw out stars"""
-    # x_blue = np.clip(x // (nside // process_h), min = 0, max = 4088)
-    # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
-    x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
-    y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
-    task = y_blue_idx * process_h + x_blue_idx
+    # x_blue = np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
+    # y_blue = np.clip(y // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
+    x_blue_idx = int(np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), 0, GLB_DATA["process_h"] - 1))
+    y_blue_idx = int(np.clip(y // (GLB_DATA["nside"] // GLB_DATA["process_v"]), 0, GLB_DATA["process_v"] - 1))
+    task = y_blue_idx * GLB_DATA["process_h"] + x_blue_idx
     return task
 
 
 # j for given process number
 def j_location(process, x_padding=0, y_padding=0):
     """Get tile bounding region in oversampled pixel coordinates."""
-    xmin_j = (nside // process_h * (process % process_h)) * in_psf_oversam
-    ymin_j = (nside // process_v * (process // process_h)) * in_psf_oversam
-    xmax_j = (in_psf_oversam * nside // process_h) + xmin_j - 1
-    ymax_j = (in_psf_oversam * nside // process_v) + ymin_j - 1
+    xmin_j = (GLB_DATA["nside"] // GLB_DATA["process_h"] * (process % GLB_DATA["process_h"])) * GLB_DATA[
+        "in_psf_oversam"
+    ]
+    ymin_j = (GLB_DATA["nside"] // GLB_DATA["process_v"] * (process // GLB_DATA["process_h"])) * GLB_DATA[
+        "in_psf_oversam"
+    ]
+    xmax_j = (GLB_DATA["in_psf_oversam"] * GLB_DATA["nside"] // GLB_DATA["process_h"]) + xmin_j - 1
+    ymax_j = (GLB_DATA["in_psf_oversam"] * GLB_DATA["nside"] // GLB_DATA["process_v"]) + ymin_j - 1
     process_bounds = galsim.BoundsI(
         xmin_j - x_padding, xmax_j + x_padding, ymin_j - y_padding, ymax_j + y_padding
     )
@@ -235,7 +245,7 @@ def draw_stars(
             # Rest of flux calculations
             wav = np.arange(0.400, 2.600, 0.001) * u.um
             fluxUnnorm = sed_bb(wav, 5000 * u.K)
-            fLambdaRef = f_nu_ref * const.c / wav**2
+            fLambdaRef = GLB_DATA["f_nu_ref"] * const.c / wav**2
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
@@ -419,7 +429,7 @@ def run_simulation(config_path):
 
     # Create output image with bounds
     xmin = ymin = -std_pad
-    xmax = ymax = nside * in_psf_oversam + std_pad - 1
+    xmax = ymax = GLB_DATA["nside"] * GLB_DATA["in_psf_oversam"] + std_pad - 1
     out_image = galsim.Image(galsim.BoundsI(xmin, xmax, ymin, ymax))
     print("read out_image!")
     sys.stdout.flush()
