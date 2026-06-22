@@ -247,11 +247,12 @@ def draw_stars(
     t_exp,
     roman_bandpasses,
     big_fft_params,
+    psf_file,
     x_padding=std_pad,
     y_padding=std_pad,
 ):
     """Draw stars for tile index j into a temporary image section."""
-    with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
+    with fits.open(psf_file) as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
         nobj = len(cat["ra"])
@@ -437,7 +438,8 @@ def run_simulation(config_path):
     print(mywcs)
     print("read from degrees to mywcs!")
     sys.stdout.flush()
-    exit()
+    # exit()
+    # K.D. : I commented out exit() for right now because it stops the job from executing and running
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
@@ -489,6 +491,9 @@ def run_simulation(config_path):
         j = assign_star(x, y)
         task_array[i] = j
 
+    # Read PSF file from configuration file
+    psf_file = config["PSFFILE"]
+
     # Prepare arguments for parallel processing
     multiprocess_stars = functools.partial(
         draw_stars,
@@ -503,6 +508,7 @@ def run_simulation(config_path):
         big_fft_params=big_fft_params,
         x_padding=std_pad,
         y_padding=std_pad,
+        psf_file=psf_file,
     )
     print("read multiprocess_stars!")
     sys.stdout.flush()
