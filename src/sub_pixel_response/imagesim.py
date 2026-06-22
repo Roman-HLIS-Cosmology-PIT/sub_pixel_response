@@ -248,6 +248,7 @@ def draw_stars(
     roman_bandpasses,
     big_fft_params,
     psf_file,
+    filter_name,
     x_padding=std_pad,
     y_padding=std_pad,
 ):
@@ -294,7 +295,7 @@ def draw_stars(
             )
             flux = norm * fluxUnnorm
             nPhotQ = np.trapezoid(
-                flux * eff_area_table["F158"] * u.m**2 * wav * t_exp / (const.h * const.c),
+                flux * eff_area_table[filter_name] * u.m**2 * wav * t_exp / (const.h * const.c),
                 x=wav,
             )
             nPhotQ = nPhotQ.decompose()
@@ -491,6 +492,9 @@ def run_simulation(config_path):
         j = assign_star(x, y)
         task_array[i] = j
 
+    # Filter read from configuration file
+    filter_name = config["FILTER"]
+
     # Read PSF file from configuration file
     psf_file = config["PSFFILE"]
 
@@ -509,6 +513,7 @@ def run_simulation(config_path):
         x_padding=std_pad,
         y_padding=std_pad,
         psf_file=psf_file,
+        filter_name=filter_name,
     )
     print("read multiprocess_stars!")
     sys.stdout.flush()
