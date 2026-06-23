@@ -97,7 +97,24 @@ class GlobalContext:
 
 
 def transform_pos(x, y, oversam=6):
-    """Convert detector pixel coordinates into oversampled pixel space."""
+    """
+    Convert detector pixel coordinates into oversampled pixel space.
+
+    Parameters
+    ----------
+    x : float
+        Detector x-coordinate in native pixel units.
+    y : float
+        Detector y-coordinate in native pixel units.
+    oversam : int, optional
+        Oversampling factor used to map native detector pixels
+        into the oversampled grid.
+
+    Returns
+    -------
+    tuple of float
+        Oversampled (X, Y) pixel coordinates.
+    """
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
     return (X, Y)
@@ -181,7 +198,25 @@ def l_poly_array(PORDER, u_, v_):
 
 
 def compute_poly(inpsf_cube, pixloc, order=1):
-    """Compute PSF from polynomial PSF cube at given detector pixel location."""
+    """
+    Compute PSF at a detector location from a polynomial PSF cube.
+
+    Parameters
+    ----------
+    inpsf_cube : np.ndarray
+        Polynomial PSF cube with dimensions
+        ((order + 1)**2, ny, nx).
+    pixloc : tuple of float
+        Detector pixel location (x, y) where the PSF is evaluated.
+    order : int, optional
+        Maximum Legendre polynomial order used in the PSF model.
+
+    Returns
+    -------
+    np.ndarray
+        The interpolated and padded PSF evaluated at the
+        specified detector location.
+    """
     lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
     this_psf = (
         smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=GLB_DATA["in_psf_oversam"]) / 64
@@ -196,7 +231,22 @@ ncpu = int(os.getenv("SLURM_NTASKS", 1))
 
 
 def sed_bb(w, T):
-    """Return blackbody flux density at wavelength and temperature."""
+    """
+    Return blackbody flux density at wavelength and temperature.
+
+    Parameters
+    ----------
+    w : astropy.units.Quantity
+        Wavelength array or value.
+    T : astropy.units.Quantity
+        Blackbody temperature.
+
+    Returns
+    -------
+    astropy.units.Quantity
+        Blackbody flux density evaluated at the specified
+        wavelengths and temperature.
+    """
     return (
         (8 * np.pi * const.h * const.c**2 / w**5) * 1 / (np.exp(const.h * const.c / (w * const.k_B * T)) - 1)
     ).decompose()
