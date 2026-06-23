@@ -253,14 +253,44 @@ def sed_bb(w, T):
 
 
 def convert_pos(ra, dec, wcs):
-    """Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
+    """
+    Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS).
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension in radians.
+    dec : float
+        Declination in radians.
+    wcs : galsim.WCS
+        World Coordinate System object.
+
+    Returns
+    -------
+    tuple of float
+        Pixel coordinates (x, y) corresponding to the input RA/Dec.
+    """
     worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
     imageCenter = wcs.posToImage(worldCenter)
     return (imageCenter.x, imageCenter.y)
 
 
 def assign_star(x, y):
-    """Assigning row of 8x4 processes to draw out stars"""
+    """
+    Assigning row of 8x4 processes to draw out stars.
+
+    Parameters
+    ----------
+    x : float
+        X-coordinate in pixel space.
+    y : float
+        Y-coordinate in pixel space.
+
+    Returns
+    -------
+    int
+        Process index (0-31) corresponding to the tile in which the star is located.
+    """
     # x_blue = np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
     # y_blue = np.clip(y // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
     x_blue_idx = int(np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), 0, GLB_DATA["process_h"] - 1))
@@ -271,7 +301,23 @@ def assign_star(x, y):
 
 # j for given process number
 def j_location(process, x_padding=0, y_padding=0):
-    """Get tile bounding region in oversampled pixel coordinates."""
+    """
+    Get tile bounding region in oversampled pixel coordinates.
+
+    Parameters
+    ----------
+    process : int
+        Process index (0-31) corresponding to the tile.
+    x_padding : int, optional
+        Padding in the x-direction for the bounding box.
+    y_padding : int, optional
+        Padding in the y-direction for the bounding box.
+
+    Returns
+    -------
+    galsim.BoundsI
+        Bounding box coordinates for the specified process.
+    """
     xmin_j = (GLB_DATA["nside"] // GLB_DATA["process_h"] * (process % GLB_DATA["process_h"])) * GLB_DATA[
         "in_psf_oversam"
     ]
