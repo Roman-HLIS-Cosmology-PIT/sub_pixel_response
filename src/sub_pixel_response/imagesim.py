@@ -293,7 +293,6 @@ def draw_stars(
     sca_num,
     task_array,
     eff_area_table,
-    transmission_curve,
     t_exp,
     roman_bandpasses,
     big_fft_params,
@@ -309,6 +308,11 @@ def draw_stars(
         nobj = len(cat["ra"])
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
+
+        mirror_diameter = 2.37 * u.m
+        geom_area = np.pi * mirror_diameter**2 / 4
+        transmission_curve = eff_area_table[filter_name] * u.m**2 / geom_area
+
         for i in range(nobj):
             if task_array[i] != j:
                 continue
@@ -512,9 +516,6 @@ def run_simulation(config_path):
         f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
 
-    mirror_diameter = 2.37 * u.m
-    geom_area = np.pi * mirror_diameter**2 / 4
-    transmission_curve = eff_area_table["F158"] * u.m**2 / geom_area
     t_exp = 120 * u.s
     print("read from mirror_diameter to t_exp!")
     sys.stdout.flush()
@@ -556,7 +557,6 @@ def run_simulation(config_path):
         sca_num=sca_num,
         task_array=task_array,
         eff_area_table=eff_area_table,
-        transmission_curve=transmission_curve,
         t_exp=t_exp,
         roman_bandpasses=roman_bandpasses,
         big_fft_params=big_fft_params,
