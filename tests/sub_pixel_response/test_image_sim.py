@@ -3,6 +3,7 @@ import galsim.roman
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
+import astropy.io as aio
 from sub_pixel_response.imagesim import (
     assign_star,
     compute_poly,
@@ -12,13 +13,13 @@ from sub_pixel_response.imagesim import (
     sed_bb,
     smooth_and_pad,
     transform_pos,
+    draw_stars,
+    GLB_DATA,
+    GlobalContext
 )
 
 # Important constants that are needed to run these unit tests
-nside = 4088
-process_h = 4
-process_v = 8
-in_psf_oversam = 6
+in_psf_oversam = GLB_DATA["in_psf_oversam"]
 std_pad = 24
 
 
@@ -210,3 +211,22 @@ def test_j_location():
     mybounds = j_location(process, x_padding=std_pad, y_padding=std_pad)
     tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
     assert tempImage.bounds == mybounds
+
+def test_draw_stars():
+    """Test that draw_stars works"""
+    with GlobalContext({"nside":128}):
+        j = 0 # need to fix
+        cat = 0 # need to fix
+        wcs = 0 # need to fix
+        sca_num = 7
+        task_array = 0 # need to fix
+        eff_area_table = aio.ascii.read(
+        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+    )
+        t_exp = 100
+        roman_bandpasses = galsim.roman.getBandpasses()
+        big_fft_params = galsim.GSParams(maximum_fft_size=123000)
+        psf_file = 0 # need to fix
+        filter_name = "F158"
+        image = draw_stars(j, cat, wcs, sca_num, task_array, eff_area_table, t_exp, roman_bandpasses, big_fft_params, psf_file, filter_name)
+        assert image.shape == (128, 128)
