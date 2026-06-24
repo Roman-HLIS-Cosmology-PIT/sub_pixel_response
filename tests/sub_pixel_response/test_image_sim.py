@@ -216,7 +216,7 @@ def test_draw_stars():
     """Test that draw_stars works"""
     with GlobalContext({"nside":128}):
         j = 0 # need to fix
-        cat = 0 # need to fix
+        cat = {"RA":np.array([]), "DEC":np.array([]), "MAG":, "is_in_circle":} # need to fix
         wcs = 0 # need to fix
         sca_num = 7
         task_array = 0 # need to fix
