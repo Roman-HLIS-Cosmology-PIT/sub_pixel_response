@@ -4,6 +4,7 @@ import numpy as np
 from astropy import units as u
 from astropy.io import fits
 import astropy.io as aio
+import urllib.request
 from sub_pixel_response.imagesim import (
     assign_star,
     compute_poly,
@@ -22,6 +23,8 @@ from sub_pixel_response.imagesim import (
 in_psf_oversam = GLB_DATA["in_psf_oversam"]
 std_pad = 24
 
+# Getting the PSF file from the wiki page
+PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/files/psf_poly_14only.fits.gz"
 
 def test_transform_pos():
     """
@@ -212,8 +215,13 @@ def test_j_location():
     tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
     assert tempImage.bounds == mybounds
 
-def test_draw_stars():
+def test_draw_stars(tmp_path):
     """Test that draw_stars works"""
+
+    tmp_dir = str(tmp_path)
+    psf_file = tmp_dir + "/psf_poly_14only.fits.gz"
+    urllib.request.urlretrieve(PSF_FILE, psf_file)
+
     with GlobalContext({"nside":128}):
         j = 0 # need to fix
         cat = {"RA":np.array([]), "DEC":np.array([]), "MAG":, "is_in_circle":} # need to fix
