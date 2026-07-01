@@ -234,7 +234,6 @@ def test_draw_stars(tmp_path):
         t_exp = 100
         roman_bandpasses = galsim.roman.getBandpasses()
         big_fft_params = galsim.GSParams(maximum_fft_size=123000)
-        psf_file = "tests/data/psf_poly_14only.fits"
         filter_name = "F158"
         image = draw_stars(j, cat, wcs, sca_num, task_array, eff_area_table, t_exp, roman_bandpasses, big_fft_params, psf_file, filter_name)
         assert image.shape == (128, 128)
