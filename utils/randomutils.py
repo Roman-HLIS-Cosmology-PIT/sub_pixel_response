@@ -1,5 +1,23 @@
 import numpy as np
 
+def rotation_matrix(ra0,dec0):
+
+    Rz = np.array([
+        [np.cos(ra0),-np.sin(ra0),0],
+        [np.sin(ra0), np.cos(ra0),0],
+        [0,0,1]
+    ])
+
+    Ry = np.array([
+        [np.sin(dec0),0,np.cos(dec0)],
+        [0,1,0],
+        [-np.cos(dec0),0,np.sin(dec0)]
+    ])
+
+    return Rz @ Ry
+
+def get_ra(y, x):
+    return np.pi + np.arctan2(-y, -x)
 
 def get_randpts(ra_ctr, dec_ctr, radius, npts, rng=None):
     """
@@ -25,6 +43,21 @@ def get_randpts(ra_ctr, dec_ctr, radius, npts, rng=None):
     dec : np.ndarray
         Array of random Declination values.
     """
-    ra = np.random.uniform(ra_ctr - radius, ra_ctr + radius, npts)
-    dec = np.random.uniform(dec_ctr - radius, dec_ctr + radius, npts)
+    if rng is None:
+        rng = np.random.default_rng()
+
+    phi = rng.uniform(0, 2 * np.pi, npts)
+    theta = 2 * np.arcsin(np.sin(np.radians(radius) / 2) * np.sqrt(rng.uniform(0, 1, npts)))
+    R = rotation_matrix(np.radians(ra_ctr), np.radians(dec_ctr))
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    vectors = np.column_stack((x, y, z))
+    rotated_vectors = vectors @ R.T
+    x_rot = rotated_vectors[:,0]
+    y_rot = rotated_vectors[:,1]
+    z_rot = rotated_vectors[:,2]
+    ra = get_ra(y_rot, x_rot)
+    dec = np.arctan2(z_rot, np.hypot(x_rot, y_rot))
     return ra, dec
+
