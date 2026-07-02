@@ -18,6 +18,7 @@ from sub_pixel_response.imagesim import (
     GLB_DATA,
     GlobalContext
 )
+from sub_pixel_response.utils.randomutils import get_randpts
 
 # Important constants that are needed to run these unit tests
 in_psf_oversam = GLB_DATA["in_psf_oversam"]
@@ -215,6 +216,11 @@ def test_j_location():
     tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
     assert tempImage.bounds == mybounds
 
+
+rand_cat = {"RA":pts_ra, "DEC":pts_dec, "MAG_H": np.rand(14, 20, 400)}
+pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 400)
+
+
 def test_draw_stars(tmp_path):
     """Test that draw_stars works"""
 
@@ -224,7 +230,7 @@ def test_draw_stars(tmp_path):
 
     with GlobalContext({"nside":128}):
         j = 0 # need to fix
-        cat = {"RA":np.array([]), "DEC":np.array([]), "MAG":, "is_in_circle":} # need to fix
+        cat = {"RA":np.array([]), "DEC":np.array([]), "MAG":, "is_in_circle":True} # need to fix
         wcs = 0 # need to fix
         sca_num = 7
         task_array = 0 # need to fix
@@ -237,3 +243,4 @@ def test_draw_stars(tmp_path):
         filter_name = "F158"
         image = draw_stars(j, cat, wcs, sca_num, task_array, eff_area_table, t_exp, roman_bandpasses, big_fft_params, psf_file, filter_name)
         assert image.shape == (128, 128)
+
