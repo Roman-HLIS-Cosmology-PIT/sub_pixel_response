@@ -230,7 +230,7 @@ def test_draw_stars(tmp_path):
 
     with GlobalContext({"nside":128}):
         j = 0 # need to fix
-        cat = {"RA":np.array([]), "DEC":np.array([]), "MAG": 0, "is_in_circle":True} # need to fix
+        cat = rand_cat  # {"RA":np.array([]), "DEC":np.array([]), "MAG": 0, "is_in_circle":True} # need to fix
         wcs = 0 # need to fix
         sca_num = 7
         task_array = 0 # need to fix
