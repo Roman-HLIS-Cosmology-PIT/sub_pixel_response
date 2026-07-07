@@ -1,5 +1,6 @@
 import urllib.request
 from pathlib import Path
+from importlib.resources import files
 
 import astropy.io as aio
 import galsim
@@ -30,7 +31,7 @@ std_pad = 24
 PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/files/psf_poly_14only.fits.gz"
 
 # Defining the path to the Roman_effarea_tables_20240327 directory before test functions
-TEST_DIR = Path(__file__).resolve().parent
+TEST_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def test_transform_pos():
@@ -233,8 +234,8 @@ def test_draw_stars(tmp_path):
     # Test values for WCS RA and Dec for generating random points
     wcs_ra = 80.5
     wcs_dec = -69.5
-    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 400)
-    rand_cat = {"RA": pts_ra, "DEC": pts_dec, "MAG_H": np.random.uniform(14, 20, 400)}
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.05, 400)
+    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": np.random.uniform(14, 20, 400)}
 
     with GlobalContext({"nside": 128}):
         j = 0  # need to fix, maybe using this value is fine for the time being
@@ -243,12 +244,14 @@ def test_draw_stars(tmp_path):
             WCSSTRING,
             sep="\n",
         )
+        myheader["CRVAL1"] = wcs_ra
+        myheader["CRVAL2"] = wcs_dec
         wcs = galsim.AstropyWCS(header=myheader)
         sca_num = 7
         task_array = np.zeros(400, dtype=np.int32)  # need to fix
-        eff_area_path = (
-            TEST_DIR / f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
-        )
+        data_dir = files("sub_pixel_response.Roman_effarea_tables_20240327")
+        filename = f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+        eff_area_path = data_dir.joinpath(filename)
         eff_area_table = aio.ascii.read(eff_area_path)
         t_exp = 100
         roman_bandpasses = galsim.roman.getBandpasses()
