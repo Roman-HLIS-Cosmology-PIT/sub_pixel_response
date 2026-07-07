@@ -1,6 +1,6 @@
 import urllib.request
-from pathlib import Path
 from importlib.resources import files
+from pathlib import Path
 
 import astropy.io as aio
 import galsim
@@ -247,7 +247,7 @@ def test_draw_stars(tmp_path):
         myheader["CRVAL1"] = wcs_ra
         myheader["CRVAL2"] = wcs_dec
         wcs = galsim.AstropyWCS(header=myheader)
-        sca_num = 7
+        sca_num = 14
         task_array = np.zeros(400, dtype=np.int32)  # need to fix
         data_dir = files("sub_pixel_response.Roman_effarea_tables_20240327")
         filename = f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
@@ -270,4 +270,4 @@ def test_draw_stars(tmp_path):
             psf_file,
             filter_name,
         )
-        assert image.shape == (128, 128)
+        assert image.array.shape == (128, 128)
