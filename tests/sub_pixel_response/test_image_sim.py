@@ -1,4 +1,5 @@
 import urllib.request
+from pathlib import Path
 
 import astropy.io as aio
 import galsim
@@ -27,6 +28,9 @@ std_pad = 24
 
 # Getting the PSF file from the wiki page
 PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/files/psf_poly_14only.fits.gz"
+
+# Defining the path to the Roman_effarea_tables_20240327 directory before test functions
+TEST_DIR = Path(__file__).resolve().parent
 
 
 def test_transform_pos():
@@ -235,15 +239,17 @@ def test_draw_stars(tmp_path):
     with GlobalContext({"nside": 128}):
         j = 0  # need to fix, maybe using this value is fine for the time being
         cat = rand_cat
-        # I'm pretty sure this wcs is defined wrong
-        wcs = galsim.roman.getWCS(
-            world_pos=galsim.CelestialCoord(ra=wcs_ra * galsim.degrees, dec=wcs_dec * galsim.degrees)
+        myheader = fits.Header.fromstring(
+            WCSSTRING,
+            sep="\n",
         )
+        wcs = galsim.AstropyWCS(header=myheader)
         sca_num = 7
-        task_array = 0  # need to fix
-        eff_area_table = aio.ascii.read(
-            f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+        task_array = np.zeros(400, dtype=np.int32)  # need to fix
+        eff_area_path = (
+            TEST_DIR / f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
         )
+        eff_area_table = aio.ascii.read(eff_area_path)
         t_exp = 100
         roman_bandpasses = galsim.roman.getBandpasses()
         big_fft_params = galsim.GSParams(maximum_fft_size=123000)
