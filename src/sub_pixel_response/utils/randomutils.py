@@ -84,4 +84,4 @@ def get_randpts(ra_ctr, dec_ctr, radius, npts, rng=None):
     z_rot = rotated_vectors[:, 2]
     ra = get_ra(y_rot, x_rot)
     dec = np.arctan2(z_rot, np.hypot(x_rot, y_rot))
-    return ra, dec
+    return ra * 180 / np.pi, dec * 180 / np.pi

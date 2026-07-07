@@ -1,22 +1,23 @@
+import urllib.request
+
+import astropy.io as aio
 import galsim
 import galsim.roman
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
-import astropy.io as aio
-import urllib.request
 from sub_pixel_response.imagesim import (
+    GLB_DATA,
+    GlobalContext,
     assign_star,
     compute_poly,
     convert_pos,
+    draw_stars,
     j_location,
     l_poly_array,
     sed_bb,
     smooth_and_pad,
     transform_pos,
-    draw_stars,
-    GLB_DATA,
-    GlobalContext
 )
 from sub_pixel_response.utils.randomutils import get_randpts
 
@@ -26,6 +27,7 @@ std_pad = 24
 
 # Getting the PSF file from the wiki page
 PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/files/psf_poly_14only.fits.gz"
+
 
 def test_transform_pos():
     """
@@ -217,10 +219,6 @@ def test_j_location():
     assert tempImage.bounds == mybounds
 
 
-rand_cat = {"RA":pts_ra, "DEC":pts_dec, "MAG_H": np.rand(14, 20, 400)}
-pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 400)
-
-
 def test_draw_stars(tmp_path):
     """Test that draw_stars works"""
 
@@ -228,19 +226,39 @@ def test_draw_stars(tmp_path):
     psf_file = tmp_dir + "/psf_poly_14only.fits.gz"
     urllib.request.urlretrieve(PSF_FILE, psf_file)
 
-    with GlobalContext({"nside":128}):
-        j = 0 # need to fix
-        cat = rand_cat  # {"RA":np.array([]), "DEC":np.array([]), "MAG": 0, "is_in_circle":True} # need to fix
-        wcs = 0 # need to fix
+    # Test values for WCS RA and Dec for generating random points
+    wcs_ra = 80.5
+    wcs_dec = -69.5
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 400)
+    rand_cat = {"RA": pts_ra, "DEC": pts_dec, "MAG_H": np.random.uniform(14, 20, 400)}
+
+    with GlobalContext({"nside": 128}):
+        j = 0  # need to fix, maybe using this value is fine for the time being
+        cat = rand_cat
+        # I'm pretty sure this wcs is defined wrong
+        wcs = galsim.roman.getWCS(
+            world_pos=galsim.CelestialCoord(ra=wcs_ra * galsim.degrees, dec=wcs_dec * galsim.degrees)
+        )
         sca_num = 7
-        task_array = 0 # need to fix
+        task_array = 0  # need to fix
         eff_area_table = aio.ascii.read(
-        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
-    )
+            f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+        )
         t_exp = 100
         roman_bandpasses = galsim.roman.getBandpasses()
         big_fft_params = galsim.GSParams(maximum_fft_size=123000)
         filter_name = "F158"
-        image = draw_stars(j, cat, wcs, sca_num, task_array, eff_area_table, t_exp, roman_bandpasses, big_fft_params, psf_file, filter_name)
+        image = draw_stars(
+            j,
+            cat,
+            wcs,
+            sca_num,
+            task_array,
+            eff_area_table,
+            t_exp,
+            roman_bandpasses,
+            big_fft_params,
+            psf_file,
+            filter_name,
+        )
         assert image.shape == (128, 128)
-
