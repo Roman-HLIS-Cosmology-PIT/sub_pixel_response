@@ -16,6 +16,7 @@ from scipy.signal.windows import tukey
 from scipy.special import legendre
 
 from sub_pixel_response.simio import read_catalog, read_config
+from sub_pixel_response.utils.trapz import trapz
 
 """
 Roman Telescope Star Field Image Simulator
@@ -390,11 +391,11 @@ def draw_stars(
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
-                * np.trapezoid(fLambdaRef * transmission_curve * wav, x=wav)
-                / np.trapezoid(fluxUnnorm * transmission_curve * wav, x=wav)
+                * trapz(fLambdaRef * transmission_curve * wav, x=wav)
+                / trapz(fluxUnnorm * transmission_curve * wav, x=wav)
             )
             flux = norm * fluxUnnorm
-            nPhotQ = np.trapezoid(
+            nPhotQ = trapz(
                 flux * eff_area_table[filter_name] * u.m**2 * wav * t_exp / (const.h * const.c),
                 x=wav,
             )
