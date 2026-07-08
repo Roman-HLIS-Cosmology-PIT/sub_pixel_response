@@ -270,4 +270,8 @@ def test_draw_stars(tmp_path):
             psf_file,
             filter_name,
         )
-        assert image.array.shape == (128, 128)
+
+        # shape for (1/8, 1/4) of canvas, * 6 oversample + 24 pad on each side
+        expect_ny = 128 // 8 * 6 + 2 * 24
+        expect_nx = 128 // 4 * 6 + 2 * 24
+        assert image.array.shape == (expect_ny, expect_nx)
