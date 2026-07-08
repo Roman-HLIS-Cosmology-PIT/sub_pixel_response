@@ -8,6 +8,7 @@ import galsim.roman
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
+from numpy.random import RandomState
 from sub_pixel_response.imagesim import (
     GLB_DATA,
     GlobalContext,
@@ -231,10 +232,12 @@ def test_draw_stars(tmp_path):
     psf_file = tmp_dir + "/psf_poly_14only.fits.gz"
     urllib.request.urlretrieve(PSF_FILE, psf_file)
 
+    rs = RandomState(22)  # Set a fixed seed
+
     # Test values for WCS RA and Dec for generating random points
     wcs_ra = 80.5
     wcs_dec = -69.5
-    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.05, 400)
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.002, 400, rng=rs)
     rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": np.random.uniform(14, 20, 400)}
 
     with GlobalContext({"nside": 128}):
@@ -275,3 +278,5 @@ def test_draw_stars(tmp_path):
         expect_ny = 128 // 8 * 6 + 2 * 24
         expect_nx = 128 // 4 * 6 + 2 * 24
         assert image.array.shape == (expect_ny, expect_nx)
+        fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
+        np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
