@@ -237,6 +237,8 @@ def test_draw_stars(tmp_path):
     # Test values for WCS RA and Dec for generating random points
     wcs_ra = 80.5
     wcs_dec = -69.5
+    pix_coord1 = 1
+    pix_coord2 = 1
     pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.002, 400, rng=rs)
     rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": np.random.uniform(14, 20, 400)}
 
@@ -249,6 +251,8 @@ def test_draw_stars(tmp_path):
         )
         myheader["CRVAL1"] = wcs_ra
         myheader["CRVAL2"] = wcs_dec
+        myheader["CRPIX1"] = pix_coord1
+        myheader["CRPIX2"] = pix_coord2
         wcs = galsim.AstropyWCS(header=myheader)
         sca_num = 14
         task_array = np.zeros(400, dtype=np.int32)  # need to fix
