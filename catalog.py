@@ -5,6 +5,19 @@ from astropy.io import fits
 def read_catalog(file_path, file_type=None):
     """
     Read a star catalog and return RA, Dec, and H-band magnitude.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the star catalog file.
+    file_type : str, optional
+        Type of the catalog file ('fits' or 'ascii'). If not provided, it will
+        be inferred from the file extension.
+
+    Returns
+    -------
+    dict
+        Dictionary containing arrays of RA, Dec, and H-band magnitudes.
     """
 
     # Determining file type

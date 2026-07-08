@@ -1,3 +1,5 @@
+"""Functions for reading data for the simulation."""
+
 import argparse
 
 import pandas as pd
@@ -6,7 +8,21 @@ from astropy.io import fits
 
 
 def read_config(config_file):
-    """Read configuration from YAML file"""
+    """
+    Read configuration from YAML file.
+
+    Parameters
+    ----------
+    config_file : str
+        The configuration file location.
+
+    Returns
+    -------
+    dict
+        The configuration file as a Python dictionary.
+
+    """
+
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
     return config
@@ -15,6 +31,27 @@ def read_config(config_file):
 def read_catalog(file_path, file_type=None):
     """
     Read a star catalog and return RA, Dec, and H-band magnitude.
+
+    Parameters
+    ----------
+    file_path : str
+        The input star catalog file.
+    file_type : str, optional
+        Treat the input file as this type; if not specified, tries to infer the
+        type from the file extension.
+
+    Returns
+    -------
+    dict
+        The catalog with keys ``ra``, ``dec``, and ``mag_H``, each representing a
+        numpy array. Magnitudes are returned as AB.
+
+    Notes
+    -----
+    Right now, the function is compatible with two types: the Besançon FITS model
+    and the Anderson ASCII model. Anderson models are assumed to be in Vega magnitudes
+    and will be converted to AB during reading. Besançon models are in AB as input.
+
     """
 
     # Determining file type
@@ -53,7 +90,20 @@ def read_catalog(file_path, file_type=None):
 
 
 def make_parser():
-    """Create argument parser"""
+    """
+    Create argument parser.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    argparse.ArgumentParser
+        A class containing information on the expected arguments.
+
+    """
+
     parser = argparse.ArgumentParser(description="Star Simulation Configuration")
     parser.add_argument("config_file", help="Path to YAML configuration file")
     return parser

@@ -16,6 +16,7 @@ from scipy.signal.windows import tukey
 from scipy.special import legendre
 
 from sub_pixel_response.simio import read_catalog, read_config
+from sub_pixel_response.utils.trapz import trapz
 
 """
 Roman Telescope Star Field Image Simulator
@@ -47,16 +48,74 @@ def print_report(s):
 
 
 # Global data and constants
-in_psf_oversam = 6
-f_nu_ref = 3.631e-23 * (u.W / u.m**2) / u.Hz  # W/m^2/Hz
-process_h = 4
-process_v = 8
-nside = 4088
-std_pad = 24
+GLB_DATA = {
+    "in_psf_oversam": 6,
+    "f_nu_ref": 3.631e-23 * (u.W / u.m**2) / u.Hz,  # W/m^2/Hz
+    "process_h": 4,
+    "process_v": 8,
+    "nside": 4088,
+}
+std_pad = 24  # C.H.: I'm waiting on moving this.
+
+
+class GlobalContext:
+    """
+    Context manager for the global data.
+
+    This is intended to be used in the form:
+
+    .. code-block: python
+
+        with GlobalContext({"nside": 2040}):
+
+            # ... stuff with nside equal to 2040, e.g., if this were JWST data
+            pass
+
+        # nside will be set back to 4088 when you exit the "with"
+
+    Parameters
+    ----------
+    modpars : dict
+        Which parameters to change.
+
+    """
+
+    def __init__(self, modpars):
+        self.modpars = modpars.copy()
+
+    def __enter__(self):
+        self.oldpars = GLB_DATA.copy()
+        for k in self.modpars:
+            if k not in GLB_DATA:
+                raise ValueError("Tried to set a key that doesn't exist!")
+            GLB_DATA[k] = self.modpars[k]
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for k in self.modpars:
+            GLB_DATA[k] = self.oldpars[k]
+        return False
 
 
 def transform_pos(x, y, oversam=6):
-    """Convert detector pixel coordinates into oversampled pixel space."""
+    """
+    Convert detector pixel coordinates into oversampled pixel space.
+
+    Parameters
+    ----------
+    x : float
+        Detector x-coordinate in native pixel units.
+    y : float
+        Detector y-coordinate in native pixel units.
+    oversam : int, optional
+        Oversampling factor used to map native detector pixels
+        into the oversampled grid.
+
+    Returns
+    -------
+    tuple of float
+        Oversampled (X, Y) pixel coordinates.
+    """
     X = oversam * (x - 0.5) + 0.5
     Y = oversam * (y - 0.5) + 0.5
     return (X, Y)
@@ -80,7 +139,9 @@ def smooth_and_pad(inArray: np.array, tophatwidth: float = 0.0) -> np.array:
 
     """
 
-    npad = int(np.ceil(tophatwidth + in_psf_oversam + 2))  # 6 from oversampling, 2 for safety margin
+    npad = int(
+        np.ceil(tophatwidth + GLB_DATA["in_psf_oversam"] + 2)
+    )  # 6 from oversampling, 2 for safety margin
     npad += (4 - npad) % 4  # make a multiple of 4
     (ny, nx) = np.shape(inArray)
     nyy = ny + npad * 2
@@ -138,9 +199,29 @@ def l_poly_array(PORDER, u_, v_):
 
 
 def compute_poly(inpsf_cube, pixloc, order=1):
-    """Compute PSF from polynomial PSF cube at given detector pixel location."""
+    """
+    Compute PSF at a detector location from a polynomial PSF cube.
+
+    Parameters
+    ----------
+    inpsf_cube : np.ndarray
+        Polynomial PSF cube with dimensions
+        ((order + 1)**2, ny, nx).
+    pixloc : tuple of float
+        Detector pixel location (x, y) where the PSF is evaluated.
+    order : int, optional
+        Maximum Legendre polynomial order used in the PSF model.
+
+    Returns
+    -------
+    np.ndarray
+        The interpolated and padded PSF evaluated at the
+        specified detector location.
+    """
     lpoly = l_poly_array(order, (pixloc[0] - 2043.5) / 2044.0, (pixloc[1] - 2043.5) / 2044.0)
-    this_psf = smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=in_psf_oversam) / 64
+    this_psf = (
+        smooth_and_pad(np.einsum("a,aij->ij", lpoly, inpsf_cube), tophatwidth=GLB_DATA["in_psf_oversam"]) / 64
+    )
     return this_psf
 
 
@@ -151,36 +232,101 @@ ncpu = int(os.getenv("SLURM_NTASKS", 1))
 
 
 def sed_bb(w, T):
-    """Return blackbody flux density at wavelength and temperature."""
+    """
+    Return blackbody flux density at wavelength and temperature.
+
+    Parameters
+    ----------
+    w : astropy.units.Quantity
+        Wavelength array or value.
+    T : astropy.units.Quantity
+        Blackbody temperature.
+
+    Returns
+    -------
+    astropy.units.Quantity
+        Blackbody flux density evaluated at the specified
+        wavelengths and temperature.
+    """
     return (
         (8 * np.pi * const.h * const.c**2 / w**5) * 1 / (np.exp(const.h * const.c / (w * const.k_B * T)) - 1)
     ).decompose()
 
 
 def convert_pos(ra, dec, wcs):
-    """Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS)."""
+    """
+    Convert RA/Dec to pixel coordinates using the World Coordinate System (WCS).
+
+    Parameters
+    ----------
+    ra : float
+        Right Ascension in radians.
+    dec : float
+        Declination in radians.
+    wcs : galsim.WCS
+        World Coordinate System object.
+
+    Returns
+    -------
+    tuple of float
+        Pixel coordinates (x, y) corresponding to the input RA/Dec.
+    """
     worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
     imageCenter = wcs.posToImage(worldCenter)
     return (imageCenter.x, imageCenter.y)
 
 
 def assign_star(x, y):
-    """Assigning row of 8x4 processes to draw out stars"""
-    # x_blue = np.clip(x // (nside // process_h), min = 0, max = 4088)
-    # y_blue = np.clip(y // (nside // process_h), min = 0, max = 4088)
-    x_blue_idx = int(np.clip(x // (nside // process_h), 0, process_h - 1))
-    y_blue_idx = int(np.clip(y // (nside // process_v), 0, process_v - 1))
-    task = y_blue_idx * process_h + x_blue_idx
+    """
+    Assigning row of 8x4 processes to draw out stars.
+
+    Parameters
+    ----------
+    x : float
+        X-coordinate in pixel space.
+    y : float
+        Y-coordinate in pixel space.
+
+    Returns
+    -------
+    int
+        Process index (0-31) corresponding to the tile in which the star is located.
+    """
+    # x_blue = np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
+    # y_blue = np.clip(y // (GLB_DATA["nside"] // GLB_DATA["process_h"]), min = 0, max = 4088)
+    x_blue_idx = int(np.clip(x // (GLB_DATA["nside"] // GLB_DATA["process_h"]), 0, GLB_DATA["process_h"] - 1))
+    y_blue_idx = int(np.clip(y // (GLB_DATA["nside"] // GLB_DATA["process_v"]), 0, GLB_DATA["process_v"] - 1))
+    task = y_blue_idx * GLB_DATA["process_h"] + x_blue_idx
     return task
 
 
 # j for given process number
 def j_location(process, x_padding=0, y_padding=0):
-    """Get tile bounding region in oversampled pixel coordinates."""
-    xmin_j = (nside // process_h * (process % process_h)) * in_psf_oversam
-    ymin_j = (nside // process_v * (process // process_h)) * in_psf_oversam
-    xmax_j = (in_psf_oversam * nside // process_h) + xmin_j - 1
-    ymax_j = (in_psf_oversam * nside // process_v) + ymin_j - 1
+    """
+    Get tile bounding region in oversampled pixel coordinates.
+
+    Parameters
+    ----------
+    process : int
+        Process index (0-31) corresponding to the tile.
+    x_padding : int, optional
+        Padding in the x-direction for the bounding box.
+    y_padding : int, optional
+        Padding in the y-direction for the bounding box.
+
+    Returns
+    -------
+    galsim.BoundsI
+        Bounding box coordinates for the specified process.
+    """
+    xmin_j = (GLB_DATA["nside"] // GLB_DATA["process_h"] * (process % GLB_DATA["process_h"])) * GLB_DATA[
+        "in_psf_oversam"
+    ]
+    ymin_j = (GLB_DATA["nside"] // GLB_DATA["process_v"] * (process // GLB_DATA["process_h"])) * GLB_DATA[
+        "in_psf_oversam"
+    ]
+    xmax_j = (GLB_DATA["in_psf_oversam"] * GLB_DATA["nside"] // GLB_DATA["process_h"]) + xmin_j - 1
+    ymax_j = (GLB_DATA["in_psf_oversam"] * GLB_DATA["nside"] // GLB_DATA["process_v"]) + ymin_j - 1
     process_bounds = galsim.BoundsI(
         xmin_j - x_padding, xmax_j + x_padding, ymin_j - y_padding, ymax_j + y_padding
     )
@@ -192,27 +338,32 @@ def draw_stars(
     cat,
     wcs,
     sca_num,
-    nobj,
-    is_in_circle,
     task_array,
     eff_area_table,
-    transmission_curve,
     t_exp,
     roman_bandpasses,
     big_fft_params,
+    psf_file,
+    filter_name,
     x_padding=std_pad,
     y_padding=std_pad,
 ):
     """Draw stars for tile index j into a temporary image section."""
-    with fits.open("/users/PAS2340/karadiludovico/fits_files/psf_poly.fits") as inpsf_file:
+    with fits.open(psf_file) as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
+        nobj = len(cat["ra"])
         mybounds = j_location(j, x_padding=std_pad, y_padding=std_pad)
         tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
+
+        mirror_diameter = 2.37 * u.m
+        geom_area = np.pi * mirror_diameter**2 / 4
+        transmission_curve = eff_area_table[filter_name] * u.m**2 / geom_area
+
         for i in range(nobj):
             if task_array[i] != j:
                 continue
-            if not is_in_circle[i]:
+            if "is_in_circle" in cat and not cat["is_in_circle"][i]:
                 continue
 
             # First, calculating position
@@ -236,16 +387,16 @@ def draw_stars(
             # Rest of flux calculations
             wav = np.arange(0.400, 2.600, 0.001) * u.um
             fluxUnnorm = sed_bb(wav, 5000 * u.K)
-            fLambdaRef = f_nu_ref * const.c / wav**2
+            fLambdaRef = GLB_DATA["f_nu_ref"] * const.c / wav**2
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
-                * np.trapezoid(fLambdaRef * transmission_curve * wav, x=wav)
-                / np.trapezoid(fluxUnnorm * transmission_curve * wav, x=wav)
+                * trapz(fLambdaRef * transmission_curve * wav, x=wav)
+                / trapz(fluxUnnorm * transmission_curve * wav, x=wav)
             )
             flux = norm * fluxUnnorm
-            nPhotQ = np.trapezoid(
-                flux * eff_area_table["F158"] * u.m**2 * wav * t_exp / (const.h * const.c),
+            nPhotQ = trapz(
+                flux * eff_area_table[filter_name] * u.m**2 * wav * t_exp / (const.h * const.c),
                 x=wav,
             )
             nPhotQ = nPhotQ.decompose()
@@ -305,17 +456,92 @@ def run_simulation(config_path):
     sys.stdout.flush()
 
     degrees = galsim.AngleUnit(np.pi / 180)
-    wcs_file_name = "/users/PCON0003/cond0007/PSF-TEST-FILES/Roman_WAS_simple_model_H158_13814_14.fits"
-    read_image = galsim.fits.read(file_name=wcs_file_name, hdu=1, read_header=True)
+    WCSSTRING = "\n".join(
+        [
+            "XTENSION= 'IMAGE   '           / Image extension                                ",
+            "BITPIX  =                  -64 / array data type                                ",
+            "NAXIS   =                    2 / number of array dimensions                     ",
+            "NAXIS1  =                 4088                                                  ",
+            "NAXIS2  =                 4088                                                  ",
+            "PCOUNT  =                    0 / number of parameters                           ",
+            "GCOUNT  =                    1 / number of groups                               ",
+            "EXPTIME =                139.8                                                  ",
+            "MJD-OBS =         62471.492045                                                  ",
+            "DATE-OBS= '2029-12-01 11:48:32.688000'                                          ",
+            "FILTER  = 'H158    '                                                            ",
+            "ZPTMAG  =   16.800870916182618                                                  ",
+            "GS_XMIN =                    1 / GalSim image minimum x coordinate              ",
+            "GS_YMIN =                    1 / GalSim image minimum y coordinate              ",
+            "GS_WCS  = 'GSFitsWCS'          / GalSim WCS name                                ",
+            "CTYPE1  = 'RA---TAN-SIP'                                                        ",
+            "CTYPE2  = 'DEC--TAN-SIP'                                                        ",
+            "CRPIX1  =               2044.0                                                  ",
+            "CRPIX2  =               2044.0                                                  ",
+            "CD1_1   = 3.01922901086850E-05                                                  ",
+            "CD1_2   = 1.45559107465136E-06                                                  ",
+            "CD2_1   = -8.3872456214526E-07                                                  ",
+            "CD2_2   = 2.93576778237758E-05                                                  ",
+            "CUNIT1  = 'deg     '                                                            ",
+            "CUNIT2  = 'deg     '                                                            ",
+            "CRVAL1  =   10.208584415642562                                                  ",
+            "CRVAL2  =   -44.33853770184239                                                  ",
+            "A_ORDER =                    4                                                  ",
+            "A_0_2   =      3.851828071E-10                                                  ",
+            "A_0_3   =      5.492409696E-14                                                  ",
+            "A_0_4   =      3.825353128E-18                                                  ",
+            "A_1_1   =     -1.232185377E-09                                                  ",
+            "A_1_2   =     -9.743979693E-14                                                  ",
+            "A_1_3   =       2.66249338E-17                                                  ",
+            "A_2_0   =      3.802404353E-10                                                  ",
+            "A_2_1   =     -9.031463862E-14                                                  ",
+            "A_2_2   =     -6.271302544E-17                                                  ",
+            "A_3_0   =      2.325088216E-14                                                  ",
+            "A_3_1   =      2.521067326E-17                                                  ",
+            "A_4_0   =      1.425534054E-17                                                  ",
+            "B_ORDER =                    4                                                  ",
+            "B_0_2   =     -1.175573884E-09                                                  ",
+            "B_0_3   =      1.303875779E-14                                                  ",
+            "B_0_4   =      1.602230927E-17                                                  ",
+            "B_1_1   =     -1.793186122E-11                                                  ",
+            "B_1_2   =     -1.532973486E-13                                                  ",
+            "B_1_3   =     -3.870326104E-17                                                  ",
+            "B_2_0   =      5.982538571E-11                                                  ",
+            "B_2_1   =      1.443685076E-13                                                  ",
+            "B_2_2   =      1.727380843E-17                                                  ",
+            "B_3_0   =      2.897221014E-14                                                  ",
+            "B_3_1   =      2.713725388E-17                                                  ",
+            "B_4_0   =      1.591294122E-18                                                  ",
+            "EQUINOX =               2000.0                                                  ",
+            "WCSAXES =                    2                                                  ",
+            "WCSNAME = 'wfiwcs_20210204_d2'                                                  ",
+            "TELESCOP= 'Roman   '                                                            ",
+            "INSTRUME= 'WFC     '                                                            ",
+            "RA_TARG =               10.489                                                  ",
+            "DEC_TARG=             -44.4299                                                  ",
+            "PA_OBSY =  -118.00999999999999                                                  ",
+            "PA_FPA  =   1.9899999999999998                                                  ",
+            "SCA_NUM =                   14                                                  ",
+            "ORIENTAT=   2.1863008787824225                                                  ",
+            "LONPOLE =                180.0                                                  ",
+            "SKY_MEAN=                 74.0                                                  ",
+            "EXTNAME = 'SCI     '           / extension name                                 ",
+            "EXTVER  =                    1 / extension value                                ",
+        ]
+    )
+    myheader = fits.Header.fromstring(
+        WCSSTRING,
+        sep="\n",
+    )
     # mybounds = read_image.bounds
-    read_image.header["CRVAL1"] = float(config["raCen"])
-    read_image.header["CRVAL2"] = float(config["decCen"])
-    read_image.header["LONPOLE"] = float(config["LONPOLE"])
-    mywcs, neworigin = galsim.wcs.readFromFitsHeader(read_image.header)
+    myheader["CRVAL1"] = float(config["raCen"])
+    myheader["CRVAL2"] = float(config["decCen"])
+    myheader["LONPOLE"] = float(config["LONPOLE"])
+    mywcs = galsim.AstropyWCS(header=myheader)
     print(mywcs)
-    print("read from degrees to mywcs, neworigin!")
+    print("read from degrees to mywcs!")
     sys.stdout.flush()
-    exit()
+    # exit()
+    # K.D. : I commented out exit() for right now because it stops the job from executing and running
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
@@ -329,10 +555,7 @@ def run_simulation(config_path):
         is_in_circle = cos_theta > np.cos((0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180)
         print("read if not config randomPos for with fits.open starCat!")
         sys.stdout.flush()
-    else:
-        is_in_circle = np.ones(nobj, dtype=bool)
-        print("read else statement for is_in_circle!")
-        sys.stdout.flush()
+        cat["is_in_circle"] = is_in_circle
 
     # Telescope exposure/SCA
     sca_num = int(config["SCA"])
@@ -340,16 +563,13 @@ def run_simulation(config_path):
         f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
 
-    mirror_diameter = 2.37 * u.m
-    geom_area = np.pi * mirror_diameter**2 / 4
-    transmission_curve = eff_area_table["F158"] * u.m**2 / geom_area
     t_exp = 120 * u.s
     print("read from mirror_diameter to t_exp!")
     sys.stdout.flush()
 
     # Create output image with bounds
     xmin = ymin = -std_pad
-    xmax = ymax = nside * in_psf_oversam + std_pad - 1
+    xmax = ymax = GLB_DATA["nside"] * GLB_DATA["in_psf_oversam"] + std_pad - 1
     out_image = galsim.Image(galsim.BoundsI(xmin, xmax, ymin, ymax))
     print("read out_image!")
     sys.stdout.flush()
@@ -370,22 +590,27 @@ def run_simulation(config_path):
         j = assign_star(x, y)
         task_array[i] = j
 
+    # Filter read from configuration file
+    filter_name = config["FILTER"]
+
+    # Read PSF file from configuration file
+    psf_file = config["PSFFILE"]
+
     # Prepare arguments for parallel processing
     multiprocess_stars = functools.partial(
         draw_stars,
         cat=cat,
         wcs=mywcs,
         sca_num=sca_num,
-        nobj=nobj,
-        is_in_circle=is_in_circle,
         task_array=task_array,
         eff_area_table=eff_area_table,
-        transmission_curve=transmission_curve,
         t_exp=t_exp,
         roman_bandpasses=roman_bandpasses,
         big_fft_params=big_fft_params,
         x_padding=std_pad,
         y_padding=std_pad,
+        psf_file=psf_file,
+        filter_name=filter_name,
     )
     print("read multiprocess_stars!")
     sys.stdout.flush()

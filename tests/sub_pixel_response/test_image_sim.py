@@ -1,25 +1,37 @@
+import urllib.request
+from importlib.resources import files
+from pathlib import Path
+
+import astropy.io as aio
 import galsim
 import galsim.roman
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from sub_pixel_response.imagesim import (
+    GLB_DATA,
+    GlobalContext,
     assign_star,
     compute_poly,
     convert_pos,
+    draw_stars,
     j_location,
     l_poly_array,
     sed_bb,
     smooth_and_pad,
     transform_pos,
 )
+from sub_pixel_response.utils.randomutils import get_randpts
 
 # Important constants that are needed to run these unit tests
-nside = 4088
-process_h = 4
-process_v = 8
-in_psf_oversam = 6
+in_psf_oversam = GLB_DATA["in_psf_oversam"]
 std_pad = 24
+
+# Getting the PSF file from the wiki page
+PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/files/psf_poly_14only.fits.gz"
+
+# Defining the path to the Roman_effarea_tables_20240327 directory before test functions
+TEST_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 def test_transform_pos():
@@ -210,3 +222,56 @@ def test_j_location():
     mybounds = j_location(process, x_padding=std_pad, y_padding=std_pad)
     tempImage = galsim.Image(bounds=mybounds, dtype=np.float32)
     assert tempImage.bounds == mybounds
+
+
+def test_draw_stars(tmp_path):
+    """Test that draw_stars works"""
+
+    tmp_dir = str(tmp_path)
+    psf_file = tmp_dir + "/psf_poly_14only.fits.gz"
+    urllib.request.urlretrieve(PSF_FILE, psf_file)
+
+    # Test values for WCS RA and Dec for generating random points
+    wcs_ra = 80.5
+    wcs_dec = -69.5
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.05, 400)
+    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": np.random.uniform(14, 20, 400)}
+
+    with GlobalContext({"nside": 128}):
+        j = 0  # need to fix, maybe using this value is fine for the time being
+        cat = rand_cat
+        myheader = fits.Header.fromstring(
+            WCSSTRING,
+            sep="\n",
+        )
+        myheader["CRVAL1"] = wcs_ra
+        myheader["CRVAL2"] = wcs_dec
+        wcs = galsim.AstropyWCS(header=myheader)
+        sca_num = 14
+        task_array = np.zeros(400, dtype=np.int32)  # need to fix
+        data_dir = files("sub_pixel_response.Roman_effarea_tables_20240327")
+        filename = f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+        eff_area_path = data_dir.joinpath(filename)
+        eff_area_table = aio.ascii.read(eff_area_path)
+        t_exp = 100
+        roman_bandpasses = galsim.roman.getBandpasses()
+        big_fft_params = galsim.GSParams(maximum_fft_size=123000)
+        filter_name = "F158"
+        image = draw_stars(
+            j,
+            cat,
+            wcs,
+            sca_num,
+            task_array,
+            eff_area_table,
+            t_exp,
+            roman_bandpasses,
+            big_fft_params,
+            psf_file,
+            filter_name,
+        )
+
+        # shape for (1/8, 1/4) of canvas, * 6 oversample + 24 pad on each side
+        expect_ny = 128 // 8 * 6 + 2 * 24
+        expect_nx = 128 // 4 * 6 + 2 * 24
+        assert image.array.shape == (expect_ny, expect_nx)
