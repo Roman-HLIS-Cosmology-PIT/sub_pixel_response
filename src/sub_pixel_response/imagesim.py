@@ -373,6 +373,7 @@ def draw_stars(
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
             imageCenter = wcs.posToImage(worldCenter)
             new_image_center = transform_pos(imageCenter.x, imageCenter.y)
+            print(new_image_center)
             imageCenter2 = galsim.PositionD(x=new_image_center[0], y=new_image_center[1])
 
             # Next, using position to compute PSF, use del command
