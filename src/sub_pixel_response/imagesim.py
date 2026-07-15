@@ -360,6 +360,11 @@ def draw_stars(
         geom_area = np.pi * mirror_diameter**2 / 4
         transmission_curve = eff_area_table[filter_name] * u.m**2 / geom_area
 
+        # Moved these up here since they are constants, may help with speed improvements for code
+        wav = np.arange(0.400, 2.600, 0.001) * u.um
+        fluxUnnorm = sed_bb(wav, 5000 * u.K)
+        fLambdaRef = GLB_DATA["f_nu_ref"] * const.c / wav**2
+
         for i in range(nobj):
             if task_array[i] != j:
                 continue
@@ -373,7 +378,6 @@ def draw_stars(
             worldCenter = galsim.CelestialCoord(ra=ra, dec=dec)
             imageCenter = wcs.posToImage(worldCenter)
             new_image_center = transform_pos(imageCenter.x, imageCenter.y)
-            print(new_image_center)
             imageCenter2 = galsim.PositionD(x=new_image_center[0], y=new_image_center[1])
 
             # Next, using position to compute PSF, use del command
@@ -386,9 +390,6 @@ def draw_stars(
             )  # 0.11/in_psf_oversam)
 
             # Rest of flux calculations
-            wav = np.arange(0.400, 2.600, 0.001) * u.um
-            fluxUnnorm = sed_bb(wav, 5000 * u.K)
-            fLambdaRef = GLB_DATA["f_nu_ref"] * const.c / wav**2
             mag = cat["mag_H"][i]
             norm = (
                 10 ** (-0.4 * mag)
@@ -417,19 +418,12 @@ def draw_stars(
 
             st_model = galsim.DeltaFunction(flux=nPhot)
             source = galsim.Convolve([interp_psf, st_model], gsparams=big_fft_params)
-            print("read flux calculations per star!", i, j)
-            sys.stdout.flush()
             source.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
-            print("read source.drawImage!")
-            sys.stdout.flush()
             del psf, this_psf, interp_psf
         return tempImage
     except Exception as e:
         print(f"Error in process {j}: {str(e)}", file=sys.stderr)
         raise
-    print(j_location)
-    print("read draw_stars function and returned tempImage!")
-    sys.stdout.flush()
 
 
 # Main Execution
@@ -445,16 +439,12 @@ def run_simulation(config_path):
 
     # Read configuration from YAML file
     config = read_config(config_path)
-    print("read config!")
-    sys.stdout.flush()
 
     # Read RA,Dec from star catalog
     # cat = galsim.Catalog(config['starCat'])
     cat = read_catalog(config["starCat"])
     # cat = cat[:1000] # added this line to only print out first 1000 stars in image
     nobj = len(cat["ra"])
-    print("read cat!")
-    sys.stdout.flush()
 
     degrees = galsim.AngleUnit(np.pi / 180)
     WCSSTRING = "\n".join(
@@ -538,9 +528,6 @@ def run_simulation(config_path):
     myheader["CRVAL2"] = float(config["decCen"])
     myheader["LONPOLE"] = float(config["LONPOLE"])
     mywcs = galsim.AstropyWCS(header=myheader)
-    print(mywcs)
-    print("read from degrees to mywcs!")
-    sys.stdout.flush()
     # exit()
     # K.D. : I commented out exit() for right now because it stops the job from executing and running
 
@@ -554,8 +541,6 @@ def run_simulation(config_path):
             ra - world_pos.rad[0]
         )
         is_in_circle = cos_theta > np.cos((0.11 * 4088) / (np.sqrt(2) * 3600) * np.pi / 180)
-        print("read if not config randomPos for with fits.open starCat!")
-        sys.stdout.flush()
         cat["is_in_circle"] = is_in_circle
 
     # Telescope exposure/SCA
@@ -565,20 +550,14 @@ def run_simulation(config_path):
     )
 
     t_exp = 120 * u.s
-    print("read from mirror_diameter to t_exp!")
-    sys.stdout.flush()
 
     # Create output image with bounds
     xmin = ymin = -std_pad
     xmax = ymax = GLB_DATA["nside"] * GLB_DATA["in_psf_oversam"] + std_pad - 1
     out_image = galsim.Image(galsim.BoundsI(xmin, xmax, ymin, ymax))
-    print("read out_image!")
-    sys.stdout.flush()
 
     roman_bandpasses = galsim.roman.getBandpasses()
     big_fft_params = galsim.GSParams(maximum_fft_size=123000)
-    print("read roman_bandpasses and big_fft_params!")
-    sys.stdout.flush()
 
     # Tile/section assignment per star
     task_array = np.zeros(nobj, dtype=np.int32)
@@ -613,31 +592,19 @@ def run_simulation(config_path):
         psf_file=psf_file,
         filter_name=filter_name,
     )
-    print("read multiprocess_stars!")
-    sys.stdout.flush()
 
     # Determine number of processes to use
     num_processes = min(ncpu, nobj)
 
     # Printing number of processes to see if multiprocessing code above works
-    print(num_processes)
-    sys.stdout.flush()
+    # print(num_processes)
+    # sys.stdout.flush()
 
     # Parallel processing and combine results
     with Pool(processes=num_processes) as pool:
-        print("read with Pool statement!")
-        sys.stdout.flush()
         for result in pool.imap_unordered(multiprocess_stars, range(num_processes)):
-            print("read for result in pool statement!")
-            sys.stdout.flush()
             if result is not None:
-                print("read if results is not None!")
-                sys.stdout.flush()
                 out_image[result.bounds] += result
-                print("read out_image += result!")
-                sys.stdout.flush()
-        print("ran pool for parallel processing!")
-        sys.stdout.flush()
 
     # Add results to blank canvas using numpy zeros
     """final_image = np.zeros((24528, 24528))
@@ -652,6 +619,9 @@ def run_simulation(config_path):
         sys.stdout.flush()"""
 
     # out_image = process_func(0)
+
+    # May remove this print statement and sys.stdout.flush() later, but for now it is useful to see if it's
+    # written to the right image/file
     out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
