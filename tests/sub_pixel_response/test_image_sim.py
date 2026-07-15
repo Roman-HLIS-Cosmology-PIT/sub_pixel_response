@@ -240,7 +240,7 @@ def test_draw_stars(tmp_path):
     pix_coord1 = 1
     pix_coord2 = 1
     pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.002, 400, rng=rs)
-    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": np.random.uniform(14, 20, 400)}
+    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": rs.uniform(14, 20, 400)}
 
     with GlobalContext({"nside": 128}):
         j = 0  # need to fix, maybe using this value is fine for the time being
@@ -282,5 +282,22 @@ def test_draw_stars(tmp_path):
         expect_ny = 128 // 8 * 6 + 2 * 24
         expect_nx = 128 // 4 * 6 + 2 * 24
         assert image.array.shape == (expect_ny, expect_nx)
-        fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
-        np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
+        # fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
+        # np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
+
+        # check there is a star in the right place
+        assert np.allclose(
+            image.array[82:85, 107:110],
+            np.array(
+                [
+                    [29326.715, 39686.34, 23006.602],
+                    [48936.34, 69467.164, 39977.223],
+                    [36486.336, 51596.69, 30427.791],
+                ]
+            ),
+            atol=1.0,
+            rtol=0.01,
+        )
+        assert 50 < np.percentile(image.array, 50) < 60
+        assert 450 < np.percentile(image.array, 90) < 500
+        assert 13000 < np.percentile(image.array, 99) < 15000
