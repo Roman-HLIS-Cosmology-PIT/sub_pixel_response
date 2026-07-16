@@ -380,15 +380,6 @@ def draw_stars(
             new_image_center = transform_pos(imageCenter.x, imageCenter.y)
             imageCenter2 = galsim.PositionD(x=new_image_center[0], y=new_image_center[1])
 
-            # Next, using position to compute PSF, use del command
-            this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1]))
-            psf = galsim.Image(this_psf)
-            # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
-            #     wavelength=roman_bandpasses['H158'])
-            interp_psf = galsim.InterpolatedImage(
-                psf, x_interpolant="lanczos32", scale=1
-            )  # 0.11/in_psf_oversam)
-
             # Rest of flux calculations
             mag = cat["mag_H"][i]
             norm = (
@@ -416,10 +407,17 @@ def draw_stars(
                 )
                 continue  # Skip this star
 
-            st_model = galsim.DeltaFunction(flux=nPhot)
-            source = galsim.Convolve([interp_psf, st_model], gsparams=big_fft_params)
-            source.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
-            del psf, this_psf, interp_psf
+            # Next, using position to compute PSF, use del command
+            this_psf = compute_poly(psf_data, (new_image_center[0], new_image_center[1]))
+            star = galsim.Image(this_psf * nPhotQ)
+            # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
+            #     wavelength=roman_bandpasses['H158'])
+            interp_star = galsim.InterpolatedImage(
+                star, x_interpolant="lanczos32", scale=1
+            )  # 0.11/in_psf_oversam)
+
+            interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
+            del star, this_psf, interp_star
         return tempImage
     except Exception as e:
         print(f"Error in process {j}: {str(e)}", file=sys.stderr)
