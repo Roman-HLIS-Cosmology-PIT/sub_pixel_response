@@ -12,6 +12,7 @@ import pytz
 from astropy import constants as const
 from astropy import units as u
 from astropy.io import fits
+from furry_parakeet.pyimcom_croutines import gridG4460C
 from scipy.signal.windows import tukey
 from scipy.special import legendre
 
@@ -54,6 +55,7 @@ GLB_DATA = {
     "process_h": 4,
     "process_v": 8,
     "nside": 4088,
+    "furry_parakeet": True,
 }
 std_pad = 24  # C.H.: I'm waiting on moving this.
 
@@ -412,12 +414,24 @@ def draw_stars(
             star = galsim.Image(this_psf * nPhotQ)
             # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
             #     wavelength=roman_bandpasses['H158'])
-            interp_star = galsim.InterpolatedImage(
-                star, x_interpolant="lanczos32", scale=1
-            )  # 0.11/in_psf_oversam)
-
-            interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
-            del star, this_psf, interp_star
+            if GLB_DATA["furry_parakeet"]:
+                interp_star_array = np.zeros_like(star.array, dtype=np.float64)
+                x_nearest_int = round(new_image_center[0])
+                y_nearest_int = round(new_image_center[1])
+                delta_x = new_image_center[0] - x_nearest_int
+                delta_y = new_image_center[1] - y_nearest_int
+                (ny, nx) = np.shape(star.array)
+                xarray = np.linspace(0, nx - 1, nx)
+                yarray = np.linspace(0, ny - 1, ny)
+                gridG4460C(star.array, xarray - delta_x, yarray - delta_y, interp_star_array)
+                # tempImage.array[center][center] += interp_star_array
+                del star, this_psf, interp_star_array
+            else:
+                interp_star = galsim.InterpolatedImage(
+                    star, x_interpolant="lanczos32", scale=1
+                )  # 0.11/in_psf_oversam)
+                interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
+                del star, this_psf, interp_star
         return tempImage
     except Exception as e:
         print(f"Error in process {j}: {str(e)}", file=sys.stderr)

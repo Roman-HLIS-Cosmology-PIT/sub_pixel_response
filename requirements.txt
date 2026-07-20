@@ -3,3 +3,4 @@ astropy
 galsim
 pandas
 scipy
+furry-parakeet
