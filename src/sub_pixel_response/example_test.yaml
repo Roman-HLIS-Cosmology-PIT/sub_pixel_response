@@ -8,4 +8,4 @@ SCA: 14              # SCA Number
 FILTER: F158         # Filter selected
 randomPos: false    # Use random positions for stars
 blackBody: true    # Use blackbody approximation for stars
-outFile: myTestPoly_7_13_225.fits # Name of the file to save the image to 
+outFile: myTestPoly_7_16_225.fits # Name of the file to save the image to 
