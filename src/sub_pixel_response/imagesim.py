@@ -415,7 +415,7 @@ def draw_stars(
             # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
             #     wavelength=roman_bandpasses['H158'])
             if GLB_DATA["furry_parakeet"]:
-                interp_star_array = np.zeros_like(star.array, dtype=np.float64)
+                interp_star_array = np.zeros((1, np.size(star.array)), dtype=np.float64)
                 x_nearest_int = round(new_image_center[0])
                 y_nearest_int = round(new_image_center[1])
                 delta_x = new_image_center[0] - x_nearest_int
@@ -423,7 +423,7 @@ def draw_stars(
                 (ny, nx) = np.shape(star.array)
                 xarray = np.linspace(0, nx - 1, nx)
                 yarray = np.linspace(0, ny - 1, ny)
-                gridG4460C(star.array, xarray - delta_x, yarray - delta_y, interp_star_array)
+                gridG4460C(star.array, xarray[None, :] - delta_x, yarray[None, :] - delta_y, interp_star_array)
                 # tempImage.array[center][center] += interp_star_array
                 del star, this_psf, interp_star_array
             else:
