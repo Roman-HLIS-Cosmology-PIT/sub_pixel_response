@@ -425,6 +425,13 @@ def draw_stars(
                 yarray = np.linspace(0, ny - 1, ny)
                 gridG4460C(star.array, xarray[None, :] - delta_x, yarray[None, :] - delta_y, interp_star_array)
                 # tempImage.array[center][center] += interp_star_array
+                xc = x_nearest_int - nx // 2
+                yc = y_nearest_int - ny // 2
+                dy1 = max(0, -yc)
+                dy2 = min(ny, tempImage.array.shape[0] - yc)
+                dx1 = max(0, -xc)
+                dx2 = min(nx, tempImage.array.shape[1] - xc)
+                tempImage.array[yc + dy1 : yc + dy2, xc + dx1 : xc + dx2] += interp_star_array[dy1:dy2, dx1:dx2]
                 del star, this_psf, interp_star_array
             else:
                 interp_star = galsim.InterpolatedImage(
