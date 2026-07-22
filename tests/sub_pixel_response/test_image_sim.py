@@ -242,7 +242,7 @@ def test_draw_stars(tmp_path):
     pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.002, 400, rng=rs)
     rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": rs.uniform(14, 20, 400)}
 
-    with GlobalContext({"nside": 128}):
+    with GlobalContext({"nside": 128, "furry_parakeet": True}):
         j = 0  # need to fix, maybe using this value is fine for the time being
         cat = rand_cat
         myheader = fits.Header.fromstring(

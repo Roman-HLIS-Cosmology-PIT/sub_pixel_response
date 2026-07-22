@@ -416,14 +416,17 @@ def draw_stars(
             #     wavelength=roman_bandpasses['H158'])
             if GLB_DATA["furry_parakeet"]:
                 interp_star_array = np.zeros((1, np.size(star.array)), dtype=np.float64)
-                x_nearest_int = round(new_image_center[0])
-                y_nearest_int = round(new_image_center[1])
-                delta_x = new_image_center[0] - x_nearest_int
-                delta_y = new_image_center[1] - y_nearest_int
+                padded_new_image_center = np.array(new_image_center) + np.array([std_pad, std_pad])
+                x_nearest_int = round(padded_new_image_center[0])
+                y_nearest_int = round(padded_new_image_center[1])
+                delta_x = padded_new_image_center[0] - x_nearest_int
+                delta_y = padded_new_image_center[1] - y_nearest_int
                 (ny, nx) = np.shape(star.array)
                 xarray = np.linspace(0, nx - 1, nx)
                 yarray = np.linspace(0, ny - 1, ny)
-                gridG4460C(star.array, xarray[None, :] - delta_x, yarray[None, :] - delta_y, interp_star_array)
+                gridG4460C(
+                    star.array, xarray[None, :] - delta_x, yarray[None, :] - delta_y, interp_star_array
+                )
                 # tempImage.array[center][center] += interp_star_array
                 stamp = interp_star_array[0].reshape(ny, nx)
                 xc = x_nearest_int - nx // 2
@@ -437,7 +440,7 @@ def draw_stars(
                 del star, this_psf, interp_star_array, stamp
             else:
                 interp_star = galsim.InterpolatedImage(
-                    star, x_interpolant="lanczos32", scale=1
+                    star, x_interpolant="lanczos32"
                 )  # 0.11/in_psf_oversam)
                 interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
                 del star, this_psf, interp_star
