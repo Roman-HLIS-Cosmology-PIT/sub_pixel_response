@@ -429,8 +429,8 @@ def draw_stars(
                 )
                 # tempImage.array[center][center] += interp_star_array
                 stamp = interp_star_array[0].reshape(ny, nx)
-                xc = x_nearest_int - nx // 2
-                yc = y_nearest_int - ny // 2
+                xc = x_nearest_int - tempImage.bounds.xmin - nx // 2
+                yc = y_nearest_int - tempImage.bounds.ymin - ny // 2
                 dy1 = max(0, -yc)
                 dy2 = min(ny, tempImage.array.shape[0] - yc)
                 dx1 = max(0, -xc)
