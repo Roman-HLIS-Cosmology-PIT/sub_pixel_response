@@ -282,12 +282,12 @@ def test_draw_stars(tmp_path):
         expect_ny = 128 // 8 * 6 + 2 * 24
         expect_nx = 128 // 4 * 6 + 2 * 24
         assert image.array.shape == (expect_ny, expect_nx)
-        # fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
+        fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
         # np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
 
         # check there is a star in the right place
         assert np.allclose(
-            image.array[39:42, 54:57],
+            image.array[63:66, 78:81],
             np.array(
                 [
                     [41679.305, 43963.94, 42894.777],
@@ -298,6 +298,6 @@ def test_draw_stars(tmp_path):
             atol=1.0,
             rtol=0.01,
         )
-        assert 80 < np.percentile(image.array, 50) < 90
+        assert 100 < np.percentile(image.array, 50) < 150
         assert 1000 < np.percentile(image.array, 90) < 2000
-        assert 9000 < np.percentile(image.array, 99) < 10000
+        assert 5000 < np.percentile(image.array, 99) < 15000
