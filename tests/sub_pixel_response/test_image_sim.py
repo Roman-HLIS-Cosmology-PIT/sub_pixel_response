@@ -287,17 +287,17 @@ def test_draw_stars(tmp_path):
 
         # check there is a star in the right place
         assert np.allclose(
-            image.array[82:85, 107:110],
+            image.array[39:42, 54:57],
             np.array(
                 [
-                    [29326.715, 39686.34, 23006.602],
-                    [48936.34, 69467.164, 39977.223],
-                    [36486.336, 51596.69, 30427.791],
+                    [41679.305, 43963.94, 42894.777],
+                    [44032.168, 46481.742, 45375.22],
+                    [43113.59, 45536.348, 44485.004],
                 ]
             ),
             atol=1.0,
             rtol=0.01,
         )
-        assert 50 < np.percentile(image.array, 50) < 60
-        assert 450 < np.percentile(image.array, 90) < 500
-        assert 13000 < np.percentile(image.array, 99) < 15000
+        assert 80 < np.percentile(image.array, 50) < 90
+        assert 1000 < np.percentile(image.array, 90) < 2000
+        assert 9000 < np.percentile(image.array, 99) < 10000

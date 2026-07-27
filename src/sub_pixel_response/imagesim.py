@@ -416,7 +416,7 @@ def draw_stars(
             #     wavelength=roman_bandpasses['H158'])
             if GLB_DATA["furry_parakeet"]:
                 interp_star_array = np.zeros((1, np.size(star.array)), dtype=np.float64)
-                padded_new_image_center = np.array(new_image_center) + np.array([std_pad, std_pad])
+                padded_new_image_center = np.array(new_image_center) - np.array([std_pad, std_pad])
                 x_nearest_int = round(padded_new_image_center[0])
                 y_nearest_int = round(padded_new_image_center[1])
                 delta_x = padded_new_image_center[0] - x_nearest_int
