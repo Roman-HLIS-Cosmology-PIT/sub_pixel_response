@@ -123,7 +123,7 @@ def compute_pixel_weights(offsets, oversam=6):
     return weight_array  # This will be (4096, 4096, 6, 6) as desired
 
 
-def generate_offset_array(offsets, imageSize=4096, oversample=6):
+def generate_offset_array(offsets, imageSize=4096, nmoment=6):
     """
     Expands a smaller offset array into a full image-sized offset array.
 
@@ -133,16 +133,16 @@ def generate_offset_array(offsets, imageSize=4096, oversample=6):
         Input offset array of shape (imageSize, imageSize, oversample).
     imageSize : int
         Size of the image in pixels.
-    oversample : int
+    nmoment : int
         Number of subpixel offsets per pixel.
 
     Returns
     -------
     np.ndarray
-        Expanded offset array of shape (imageSize, imageSize, oversample).
+        Expanded offset array of shape (imageSize, imageSize, nmoment).
     """
     # This function will copy a single array of offsets into 4096*4096*6 array to be used for testing.
-    offsetArray = np.zeros((imageSize, imageSize, oversample))
+    offsetArray = np.zeros((imageSize, imageSize, nmoment))
     offsetArray[:imageSize, :imageSize, :] = offsets
     return offsetArray
 

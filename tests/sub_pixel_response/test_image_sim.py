@@ -1,4 +1,6 @@
+import io
 import urllib.request
+from contextlib import redirect_stdout
 from importlib.resources import files
 from pathlib import Path
 
@@ -18,6 +20,7 @@ from sub_pixel_response.imagesim import (
     draw_stars,
     j_location,
     l_poly_array,
+    print_report,
     sed_bb,
     smooth_and_pad,
     transform_pos,
@@ -301,3 +304,11 @@ def test_draw_stars(tmp_path):
         assert 100 < np.percentile(image.array, 50) < 150
         assert 1000 < np.percentile(image.array, 90) < 2000
         assert 5000 < np.percentile(image.array, 99) < 15000
+
+
+def test_report():
+    """Test printing message to terminal."""
+    f = io.StringIO()
+    with redirect_stdout(f):
+        print_report("oops")
+    assert str(f.getvalue())[:4] == "oops"
