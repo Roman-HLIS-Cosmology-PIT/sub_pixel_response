@@ -12,6 +12,7 @@ import pytz
 from astropy import constants as const
 from astropy import units as u
 from astropy.io import fits
+from furry_parakeet.pyimcom_croutines import gridG4460C
 from scipy.signal.windows import tukey
 from scipy.special import legendre
 
@@ -54,6 +55,7 @@ GLB_DATA = {
     "process_h": 4,
     "process_v": 8,
     "nside": 4088,
+    "furry_parakeet": True,
 }
 std_pad = 24  # C.H.: I'm waiting on moving this.
 
@@ -412,12 +414,36 @@ def draw_stars(
             star = galsim.Image(this_psf * nPhotQ)
             # psf = galsim.roman.getPSF(sca_num, 'H158', SCA_pos=pos_SCA, wcs=mywcs,
             #     wavelength=roman_bandpasses['H158'])
-            interp_star = galsim.InterpolatedImage(
-                star, x_interpolant="lanczos32", scale=1
-            )  # 0.11/in_psf_oversam)
-
-            interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
-            del star, this_psf, interp_star
+            if GLB_DATA["furry_parakeet"]:
+                interp_star_array = np.zeros((1, np.size(star.array)), dtype=np.float64)
+                padded_new_image_center = np.array(new_image_center)
+                x_nearest_int = round(padded_new_image_center[0])
+                y_nearest_int = round(padded_new_image_center[1])
+                delta_x = padded_new_image_center[0] - x_nearest_int
+                delta_y = padded_new_image_center[1] - y_nearest_int
+                (ny, nx) = np.shape(star.array)
+                xarray = np.linspace(0, nx - 1, nx)
+                yarray = np.linspace(0, ny - 1, ny)
+                gridG4460C(
+                    star.array, xarray[None, :] - delta_x, yarray[None, :] - delta_y, interp_star_array
+                )
+                # tempImage.array[center][center] += interp_star_array
+                stamp = interp_star_array[0].reshape(ny, nx)
+                xc = x_nearest_int - tempImage.bounds.xmin - nx // 2
+                yc = y_nearest_int - tempImage.bounds.ymin - ny // 2
+                dy1 = max(0, -yc)
+                dy2 = min(ny, tempImage.array.shape[0] - yc)
+                dx1 = max(0, -xc)
+                dx2 = min(nx, tempImage.array.shape[1] - xc)
+                if dy1 < dy2 and dx1 < dx2:
+                    tempImage.array[yc + dy1 : yc + dy2, xc + dx1 : xc + dx2] += stamp[dy1:dy2, dx1:dx2]
+                del star, this_psf, interp_star_array, stamp
+            else:
+                interp_star = galsim.InterpolatedImage(
+                    star, x_interpolant="lanczos32"
+                )  # 0.11/in_psf_oversam)
+                interp_star.drawImage(tempImage, method="no_pixel", center=imageCenter2, add_to_image=True)
+                del star, this_psf, interp_star
         return tempImage
     except Exception as e:
         print(f"Error in process {j}: {str(e)}", file=sys.stderr)

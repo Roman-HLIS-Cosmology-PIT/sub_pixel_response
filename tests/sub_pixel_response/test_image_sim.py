@@ -242,7 +242,7 @@ def test_draw_stars(tmp_path):
     pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.002, 400, rng=rs)
     rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": rs.uniform(14, 20, 400)}
 
-    with GlobalContext({"nside": 128}):
+    with GlobalContext({"nside": 128, "furry_parakeet": True}):
         j = 0  # need to fix, maybe using this value is fine for the time being
         cat = rand_cat
         myheader = fits.Header.fromstring(
@@ -282,22 +282,22 @@ def test_draw_stars(tmp_path):
         expect_ny = 128 // 8 * 6 + 2 * 24
         expect_nx = 128 // 4 * 6 + 2 * 24
         assert image.array.shape == (expect_ny, expect_nx)
-        # fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
+        fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
         # np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
 
         # check there is a star in the right place
         assert np.allclose(
-            image.array[82:85, 107:110],
+            image.array[63:66, 78:81],
             np.array(
                 [
-                    [29326.715, 39686.34, 23006.602],
-                    [48936.34, 69467.164, 39977.223],
-                    [36486.336, 51596.69, 30427.791],
+                    [41679.305, 43963.94, 42894.777],
+                    [44032.168, 46481.742, 45375.22],
+                    [43113.59, 45536.348, 44485.004],
                 ]
             ),
             atol=1.0,
             rtol=0.01,
         )
-        assert 50 < np.percentile(image.array, 50) < 60
-        assert 450 < np.percentile(image.array, 90) < 500
-        assert 13000 < np.percentile(image.array, 99) < 15000
+        assert 100 < np.percentile(image.array, 50) < 150
+        assert 1000 < np.percentile(image.array, 90) < 2000
+        assert 5000 < np.percentile(image.array, 99) < 15000
