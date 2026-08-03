@@ -654,3 +654,37 @@ def run_simulation(config_path):
 # Main Execution
 if __name__ == "__main__":
     run_simulation(sys.argv[1])
+
+def make_final_image(oversampled_image, offset_file, oversample=6):
+    """
+    Apply a pixel offset model to an oversampled image.
+
+    Parameters
+    ----------
+    oversampled_image : np.ndarray
+        Oversampled simulator image.
+
+    offset_file : str
+        FITS file for the pixel offset cube.
+
+    oversample : int
+        Oversampling factor.
+
+    Returns
+    -------
+    np.ndarray
+        Final 4088 x 4088 detector image.
+    """
+
+    offsets = read_offset_cube(offset_file) # need to add a pixel offset file for this & the fits cube to work
+
+    image_size = offsets.shape[0]   # need to import read_offset_cube from simio.py (if I made that function as intended).
+
+    final_image = process_image(       # need to import process_image from process_image.py
+        oversampledImage=oversampled_image,
+        offsets=offsets,
+        imageSize=image_size,
+        oversample=oversample,
+    )
+
+    return final_image

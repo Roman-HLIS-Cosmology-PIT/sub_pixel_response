@@ -107,3 +107,23 @@ def make_parser():
     parser = argparse.ArgumentParser(description="Star Simulation Configuration")
     parser.add_argument("config_file", help="Path to YAML configuration file")
     return parser
+
+def read_offset_cube(file_path):
+    """
+    Read a FITS cube containing pixel offsets.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the FITS cube.
+
+    Returns
+    -------
+    np.ndarray
+        Offset array.
+    """
+
+    with fits.open(file_path) as hdul:
+        offsets = np.copy(hdul[0].data)
+
+    return offsets
