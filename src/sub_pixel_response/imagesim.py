@@ -16,7 +16,8 @@ from furry_parakeet.pyimcom_croutines import gridG4460C
 from scipy.signal.windows import tukey
 from scipy.special import legendre
 
-from sub_pixel_response.simio import process_image, read_catalog, read_config, read_offset_cube
+from sub_pixel_response import process_image
+from sub_pixel_response.simio import read_catalog, read_config, read_offset_cube
 from sub_pixel_response.utils.trapz import trapz
 
 """
