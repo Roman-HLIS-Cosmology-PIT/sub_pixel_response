@@ -2,6 +2,7 @@
 
 import argparse
 
+import numpy as np
 import pandas as pd
 import yaml
 from astropy.io import fits
@@ -107,6 +108,7 @@ def make_parser():
     parser = argparse.ArgumentParser(description="Star Simulation Configuration")
     parser.add_argument("config_file", help="Path to YAML configuration file")
     return parser
+
 
 def read_offset_cube(file_path):
     """
