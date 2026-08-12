@@ -11,6 +11,7 @@ import numpy as np
 from astropy import units as u
 from astropy.io import fits
 from numpy.random import RandomState
+from sub_pixel_response import process_image
 from sub_pixel_response.imagesim import (
     GLB_DATA,
     GlobalContext,
@@ -20,6 +21,7 @@ from sub_pixel_response.imagesim import (
     draw_stars,
     j_location,
     l_poly_array,
+    make_final_image,
     print_report,
     sed_bb,
     smooth_and_pad,
@@ -304,6 +306,48 @@ def test_draw_stars(tmp_path):
         assert 100 < np.percentile(image.array, 50) < 150
         assert 1000 < np.percentile(image.array, 90) < 2000
         assert 5000 < np.percentile(image.array, 99) < 15000
+
+
+def test_make_final_image(tmp_path):
+    """Test for filtering and making a final image."""
+
+    # Test setup
+    test_ov = 4
+    test_ns = 256
+
+    # Make an array of offsets.
+    offsets = process_image.generate_offset_array(
+        np.array([1.0, 0.0, 0.0, 1.0 / 12.0, 0.0, 1.0 / 12.0]), imageSize=test_ns
+    )
+    offset_file = str(tmp_path) + "/o.fits"
+    fits.PrimaryHDU(offsets).writeto(offset_file, overwrite=True)
+
+    # Error targets
+    desired_errs = [0.004, 0.0003, 2e-5, 2e-6]
+
+    # Now check each one.
+    for j in range(4):
+        # Now make a "test" image that's a single Fourier mode
+        u, v = 0.4 / 2**j, 0.2 / 2**j
+        nos = test_ov * test_ns
+        _s = np.linspace(0, nos - 1, nos) / test_ov - 0.5 * (1 - 1 / test_ov)
+        _x, _y = np.meshgrid(_s, _s)
+        orig = np.cos(2.0 * np.pi * (u * _x + v * _y)).astype(np.float32)
+        del _s, _x, _y
+
+        # Get the down-sampled image
+        with GlobalContext({"nside": test_ns, "furry_parakeet": True}):
+            final_image = make_final_image(orig, offset_file, oversample=test_ov)
+
+        # Now see what we made
+        _s = np.linspace(0, test_ns - 1, test_ns)
+        _x, _y = np.meshgrid(_s, _s)
+        target = np.cos(2.0 * np.pi * (u * _x + v * _y)) * np.sinc(u) * np.sinc(v) * test_ov**2
+        del _s, _x, _y
+        err = np.amax(np.abs(target - final_image)) / test_ov**2
+        print(u, v, err)
+
+        assert err < desired_errs[j]
 
 
 def test_report():

@@ -478,9 +478,9 @@ def make_final_image(oversampled_image, offset_file, oversample=6):
 
     image_size = offsets.shape[0]
 
-    # K.D.: I added the import for read_offset_cude and process_image from simio.py
+    # K.D.: I added the import for read_offset_cube from simio.py
 
-    final_image = process_image(
+    final_image = process_image.process_image(
         oversampledImage=oversampled_image,
         offsets=offsets,
         imageSize=image_size,

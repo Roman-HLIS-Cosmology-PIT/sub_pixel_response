@@ -1,6 +1,6 @@
 |badge1| |badge2|
 
-.. |badge1| image:: https://codecov.io/gh/Roman-HLIS-Cosmology-PIT/sub_pixel_response/graph/badge.svg?token=YWeASr8pFq
+.. |badge1| image:: https://codecov.io/gh/Roman-HLIS-Cosmology-PIT/sub_pixel_response/graph/badge.svg
 
 .. |badge2| image:: https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/actions/workflows/smoke-test.yml/badge.svg
 
