@@ -99,3 +99,25 @@ ignore = [
 
 [tool.coverage.run]
 omit=["src/sub_pixel_response/_version.py"]
+
+[tool.setuptools.package-data]
+"sub_pixel_response.Roman_effarea_tables_20240327" = [
+    "Roman_effarea_v8_SCA01_20240301.ecsv",
+    "Roman_effarea_v8_SCA02_20240301.ecsv",
+    "Roman_effarea_v8_SCA03_20240301.ecsv",
+    "Roman_effarea_v8_SCA04_20240301.ecsv",
+    "Roman_effarea_v8_SCA05_20240301.ecsv",
+    "Roman_effarea_v8_SCA06_20240301.ecsv",
+    "Roman_effarea_v8_SCA07_20240301.ecsv",
+    "Roman_effarea_v8_SCA08_20240301.ecsv",
+    "Roman_effarea_v8_SCA09_20240301.ecsv",
+    "Roman_effarea_v8_SCA10_20240301.ecsv",
+    "Roman_effarea_v8_SCA11_20240301.ecsv",
+    "Roman_effarea_v8_SCA12_20240301.ecsv",
+    "Roman_effarea_v8_SCA13_20240301.ecsv",
+    "Roman_effarea_v8_SCA14_20240301.ecsv",
+    "Roman_effarea_v8_SCA15_20240301.ecsv",
+    "Roman_effarea_v8_SCA16_20240301.ecsv",
+    "Roman_effarea_v8_SCA17_20240301.ecsv",
+    "Roman_effarea_v8_SCA18_20240301.ecsv",
+]

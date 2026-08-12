@@ -8,6 +8,7 @@ import astropy.io as aio
 import galsim
 import galsim.roman
 import numpy as np
+import pytest
 from astropy import units as u
 from astropy.io import fits
 from numpy.random import RandomState
@@ -23,6 +24,7 @@ from sub_pixel_response.imagesim import (
     l_poly_array,
     make_final_image,
     print_report,
+    run_simulation,
     sed_bb,
     smooth_and_pad,
     transform_pos,
@@ -38,6 +40,15 @@ PSF_FILE = "https://github.com/Roman-HLIS-Cosmology-PIT/sub_pixel_response/wiki/
 
 # Defining the path to the Roman_effarea_tables_20240327 directory before test functions
 TEST_DIR = Path(__file__).resolve().parent.parent.parent
+
+
+@pytest.fixture(scope="module")
+def get_psf_file(tmp_path_factory):
+    """Pull the PSF file."""
+    download_dir = tmp_path_factory.mktemp("downloads")
+    psf_file = str(download_dir) + "/psf_poly_14only.fits.gz"
+    urllib.request.urlretrieve(PSF_FILE, psf_file)
+    return psf_file
 
 
 def test_transform_pos():
@@ -230,12 +241,10 @@ def test_j_location():
     assert tempImage.bounds == mybounds
 
 
-def test_draw_stars(tmp_path):
+def test_draw_stars(get_psf_file):
     """Test that draw_stars works"""
 
-    tmp_dir = str(tmp_path)
-    psf_file = tmp_dir + "/psf_poly_14only.fits.gz"
-    urllib.request.urlretrieve(PSF_FILE, psf_file)
+    psf_file = get_psf_file
 
     rs = RandomState(22)  # Set a fixed seed
 
@@ -287,7 +296,7 @@ def test_draw_stars(tmp_path):
         expect_ny = 128 // 8 * 6 + 2 * 24
         expect_nx = 128 // 4 * 6 + 2 * 24
         assert image.array.shape == (expect_ny, expect_nx)
-        fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
+        # fits.PrimaryHDU(image.array).writeto("a.fits", overwrite=True)
         # np.savetxt("b.txt", np.stack((pts_ra, pts_dec)).T)
 
         # check there is a star in the right place
@@ -306,6 +315,54 @@ def test_draw_stars(tmp_path):
         assert 100 < np.percentile(image.array, 50) < 150
         assert 1000 < np.percentile(image.array, 90) < 2000
         assert 5000 < np.percentile(image.array, 99) < 15000
+
+
+def test_run_simulation(tmp_path, get_psf_file):
+    """Test that draw_stars works"""
+
+    tmp_dir = str(tmp_path)
+    psf_file = get_psf_file
+
+    rs = RandomState(22)  # Set a fixed seed
+
+    # Test values for WCS RA and Dec for generating random points
+    wcs_ra = 80.5
+    wcs_dec = -69.5
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 2000, rng=rs)
+    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": rs.uniform(14, 20, 2000)}
+    # Now put that random catalog in a file.
+    star_cat = tmp_dir + "/starcat.fits"
+    hdu = fits.BinTableHDU.from_columns(
+        [
+            fits.Column(name="RAJ2000", format="D", array=rand_cat["ra"]),
+            fits.Column(name="DECJ2000", format="D", array=rand_cat["dec"]),
+            fits.Column(name="H", format="E", array=rand_cat["mag_H"]),
+        ]
+    )
+    fits.HDUList([fits.PrimaryHDU(), hdu]).writeto(star_cat, overwrite=True)
+    print("-->", star_cat)
+
+    # Write the YAML
+    output_target = tmp_dir + "/testimage.fits"
+    with open(tmp_dir + "/config.yaml", "w") as f:
+        f.write("---\n")
+        f.write("raCen: 80.5\n")
+        f.write("decCen: -69.49\n")  # set 0.01 deg from circle center
+        f.write(f"starCat: {star_cat}\n")
+        f.write(f"PSFFILE: {psf_file}\n")
+        f.write("LONPOLE: 225\n")
+        f.write("SCA: 14\n")
+        f.write("FILTER: F158\n")
+        f.write("randomPos: false\n")
+        f.write("blackBody: true\n")
+        f.write(f"outFile: {output_target}\n")
+        f.write("...\n")
+
+    with GlobalContext({"nside": 512, "furry_parakeet": True}):
+        run_simulation(tmp_dir + "/config.yaml")
+    with fits.open(output_target) as f:
+        assert np.shape(f[0].data) == (3120, 3120)
+        assert 3.5e4 < f[0].data[2742, 387] < 4.0e4  # check there's a star there
 
 
 def test_make_final_image(tmp_path):

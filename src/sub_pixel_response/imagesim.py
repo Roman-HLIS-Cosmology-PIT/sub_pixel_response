@@ -1,7 +1,9 @@
+import copy
 import datetime
 import functools
 import os
 import sys
+from importlib.resources import files
 from multiprocessing import Pool
 
 import astropy.io as aio
@@ -350,8 +352,15 @@ def draw_stars(
     filter_name,
     x_padding=std_pad,
     y_padding=std_pad,
+    glb_data_target=None,
 ):
-    """Draw stars for tile index j into a temporary image section."""
+    """Draw stars for tile index j into a temporary image section. glb_data_target should only be used for
+    multiprocessing, where you want to set up each worker with the GLB_DATA from the calling function."""
+
+    if glb_data_target is not None:
+        for k in glb_data_target:
+            GLB_DATA[k] = glb_data_target[k]
+
     with fits.open(psf_file) as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
@@ -609,9 +618,10 @@ def run_simulation(config_path):
 
     # Telescope exposure/SCA
     sca_num = int(config["SCA"])
-    eff_area_table = aio.ascii.read(
-        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+    infile = files("sub_pixel_response.Roman_effarea_tables_20240327").joinpath(
+        f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
+    eff_area_table = aio.ascii.read(infile)
 
     t_exp = 120 * u.s
 
@@ -655,6 +665,7 @@ def run_simulation(config_path):
         y_padding=std_pad,
         psf_file=psf_file,
         filter_name=filter_name,
+        glb_data_target=copy.deepcopy(GLB_DATA),
     )
 
     # Determine number of processes to use
@@ -666,7 +677,7 @@ def run_simulation(config_path):
 
     # Parallel processing and combine results
     with Pool(processes=num_processes) as pool:
-        for result in pool.imap_unordered(multiprocess_stars, range(num_processes)):
+        for result in pool.imap_unordered(multiprocess_stars, range(GLB_DATA["process_h"] * GLB_DATA["process_v"])):
             if result is not None:
                 out_image[result.bounds] += result
 
