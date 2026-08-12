@@ -677,7 +677,9 @@ def run_simulation(config_path):
 
     # Parallel processing and combine results
     with Pool(processes=num_processes) as pool:
-        for result in pool.imap_unordered(multiprocess_stars, range(GLB_DATA["process_h"] * GLB_DATA["process_v"])):
+        for result in pool.imap_unordered(
+            multiprocess_stars, range(GLB_DATA["process_h"] * GLB_DATA["process_v"])
+        ):
             if result is not None:
                 out_image[result.bounds] += result
 
