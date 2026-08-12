@@ -1,0 +1,10 @@
+FILTER: F158
+LONPOLE: 225
+PSFFILE: /users/PAS2340/karadiludovico/fits_files/psf_poly.fits
+SCA: 7
+blackBody: true
+decCen: -69.5
+outFile: all_scas/roman_sca_07.fits
+raCen: 80.5
+randomPos: false
+starCat: /users/PAS2340/karadiludovico/star_catalogs/COMPREHENSIVE_2017p38.XYVHJKLM_OBS_EST_W_RDF
