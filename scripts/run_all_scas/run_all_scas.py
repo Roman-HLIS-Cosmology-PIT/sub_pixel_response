@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import yaml
-
 from sub_pixel_response.imagesim import run_simulation
 
 # Note: I want to try writing this again later to see if it can all be done in imagesim.py
