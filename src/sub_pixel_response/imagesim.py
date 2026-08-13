@@ -600,6 +600,24 @@ def run_simulation(config_path):
     myheader["CRVAL1"] = float(config["raCen"])
     myheader["CRVAL2"] = float(config["decCen"])
     myheader["LONPOLE"] = float(config["LONPOLE"])
+
+    # Add SCA-specific distortion/WCS keywords
+    for key in [
+        "CD1_1",
+        "CD1_2",
+        "CD2_1",
+        "CD2_2",
+        "A_ORDER",
+        "B_ORDER",
+    ]:
+        if key in config:
+            myheader[key] = config[key]
+
+    # Add SIP coefficients
+    for key, value in config.items():
+        if key.startswith("A_") or key.startswith("B_"):
+            myheader[key] = value
+
     mywcs = galsim.AstropyWCS(header=myheader)
     # exit()
     # K.D. : I commented out exit() for right now because it stops the job from executing and running
