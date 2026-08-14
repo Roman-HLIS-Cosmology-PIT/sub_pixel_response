@@ -2,6 +2,7 @@ import copy
 import datetime
 import functools
 import os
+import re
 import sys
 from importlib.resources import files
 from multiprocessing import Pool
@@ -533,9 +534,11 @@ def trim_cat(cat, ra_ctr, dec_ctr, radius):
     # Keep stars within the specified radius
     is_within_radius = cos_theta > np.cos(np.radians(radius))
 
-    cat_trimmed = cat[is_within_radius]
+    for f in cat.keys():  # noqa: SIM118
+        if isinstance(cat[f], np.ndarray):
+            cat[f] = cat[f][is_within_radius]
 
-    return cat_trimmed
+    return cat
 
 
 # Main Execution
@@ -557,9 +560,6 @@ def run_simulation(config_path):
     cat = read_catalog(config["starCat"])
     # cat = cat[:1000] # added this line to only print out first 1000 stars in image
     # nobj = len(cat["ra"])
-    nobj = len(
-        trim_cat(cat, config["raCen"], config["decCen"], radius=0.5)
-    )  # Trim catalog to stars within 0.5 deg
 
     degrees = galsim.AngleUnit(np.pi / 180)
     WCSSTRING = "\n".join(
@@ -643,14 +643,13 @@ def run_simulation(config_path):
     myheader["CRVAL2"] = float(config["decCen"])
     myheader["LONPOLE"] = float(config["LONPOLE"])
 
+    # copy all the keywords
     sca_num = int(config["SCA"])
-
     sca_header = distortion_headers[sca_num - 1]
-
-    config["CD1_1"] = sca_header["CD1_1"]
-    config["CD1_2"] = sca_header["CD1_2"]
-    config["CD2_1"] = sca_header["CD2_1"]
-    config["CD2_2"] = sca_header["CD2_2"]
+    print(config)
+    if not config.get("OLDWCS", False):  # OLDWCS allows us to turn this off (for testing only)
+        for kw in sca_header:
+            config[kw] = sca_header[kw]
 
     # Add SCA-specific distortion/WCS keywords
     for key in [
@@ -666,12 +665,16 @@ def run_simulation(config_path):
 
     # Add SIP coefficients
     for key, value in config.items():
-        if key.startswith("A_") or key.startswith("B_"):
+        if re.match(r"(A|B)_\d_\d", key):
             myheader[key] = value
 
     mywcs = galsim.AstropyWCS(header=myheader)
     # exit()
     # K.D. : I commented out exit() for right now because it stops the job from executing and running
+
+    nobj = len(
+        trim_cat(cat, config["raCen"], config["decCen"], radius=0.15)["ra"]
+    )  # Trim catalog to stars within 0.15 deg
 
     # Determine which stars are in the circle
     if not config["randomPos"]:

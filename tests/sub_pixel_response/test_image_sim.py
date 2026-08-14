@@ -356,6 +356,7 @@ def test_run_simulation(tmp_path, get_psf_file):
         f.write("randomPos: false\n")
         f.write("blackBody: true\n")
         f.write(f"outFile: {output_target}\n")
+        f.write("OLDWCS: true\n")
         f.write("...\n")
 
     with GlobalContext({"nside": 512, "furry_parakeet": True}):
