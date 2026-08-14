@@ -22,6 +22,8 @@ from sub_pixel_response import process_image
 from sub_pixel_response.simio import read_catalog, read_config, read_offset_cube
 from sub_pixel_response.utils.trapz import trapz
 
+from .refdistort import distortion_headers
+
 """
 Roman Telescope Star Field Image Simulator
 -----------------------------------------
@@ -499,6 +501,43 @@ def make_final_image(oversampled_image, offset_file, oversample=6):
     return final_image
 
 
+def trim_cat(cat, ra_ctr, dec_ctr, radius):
+    """
+    Trim the star catalog to include only stars within a specified radius of a given RA/Dec center.
+
+    Parameters
+    ----------
+    cat : astropy.table.Table
+        Star catalog containing RA and Dec columns.
+    ra_ctr : float
+        Right Ascension of the center in degrees.
+    dec_ctr : float
+        Declination of the center in degrees.
+    radius : float
+        Radius in degrees within which to keep stars.
+
+    Returns
+    -------
+    astropy.table.Table
+        Trimmed star catalog containing only stars within the specified radius.
+    """
+
+    ra = cat["ra"]
+    dec = cat["dec"]
+
+    # Calculate angular distance from the center for each star
+    cos_theta = np.sin(np.radians(dec_ctr)) * np.sin(np.radians(dec)) + np.cos(np.radians(dec_ctr)) * np.cos(
+        np.radians(dec)
+    ) * np.cos(np.radians(ra - ra_ctr))
+
+    # Keep stars within the specified radius
+    is_within_radius = cos_theta > np.cos(np.radians(radius))
+
+    cat_trimmed = cat[is_within_radius]
+
+    return cat_trimmed
+
+
 # Main Execution
 def run_simulation(config_path):
     """
@@ -517,7 +556,10 @@ def run_simulation(config_path):
     # cat = galsim.Catalog(config['starCat'])
     cat = read_catalog(config["starCat"])
     # cat = cat[:1000] # added this line to only print out first 1000 stars in image
-    nobj = len(cat["ra"])
+    # nobj = len(cat["ra"])
+    nobj = len(
+        trim_cat(cat, config["raCen"], config["decCen"], radius=0.5)
+    )  # Trim catalog to stars within 0.5 deg
 
     degrees = galsim.AngleUnit(np.pi / 180)
     WCSSTRING = "\n".join(
@@ -601,6 +643,15 @@ def run_simulation(config_path):
     myheader["CRVAL2"] = float(config["decCen"])
     myheader["LONPOLE"] = float(config["LONPOLE"])
 
+    sca_num = int(config["SCA"])
+
+    sca_header = distortion_headers[sca_num - 1]
+
+    config["CD1_1"] = sca_header["CD1_1"]
+    config["CD1_2"] = sca_header["CD1_2"]
+    config["CD2_1"] = sca_header["CD2_1"]
+    config["CD2_2"] = sca_header["CD2_2"]
+
     # Add SCA-specific distortion/WCS keywords
     for key in [
         "CD1_1",
@@ -635,7 +686,6 @@ def run_simulation(config_path):
         cat["is_in_circle"] = is_in_circle
 
     # Telescope exposure/SCA
-    sca_num = int(config["SCA"])
     infile = files("sub_pixel_response.Roman_effarea_tables_20240327").joinpath(
         f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
