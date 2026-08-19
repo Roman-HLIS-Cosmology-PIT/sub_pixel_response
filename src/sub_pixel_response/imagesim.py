@@ -1,7 +1,10 @@
+import copy
 import datetime
 import functools
 import os
+import re
 import sys
+from importlib.resources import files
 from multiprocessing import Pool
 
 import astropy.io as aio
@@ -16,8 +19,11 @@ from furry_parakeet.pyimcom_croutines import gridG4460C
 from scipy.signal.windows import tukey
 from scipy.special import legendre
 
-from sub_pixel_response.simio import read_catalog, read_config
+from sub_pixel_response import process_image
+from sub_pixel_response.simio import read_catalog, read_config, read_offset_cube
 from sub_pixel_response.utils.trapz import trapz
+
+from .refdistort import distortion_headers
 
 """
 Roman Telescope Star Field Image Simulator
@@ -349,8 +355,15 @@ def draw_stars(
     filter_name,
     x_padding=std_pad,
     y_padding=std_pad,
+    glb_data_target=None,
 ):
-    """Draw stars for tile index j into a temporary image section."""
+    """Draw stars for tile index j into a temporary image section. glb_data_target should only be used for
+    multiprocessing, where you want to set up each worker with the GLB_DATA from the calling function."""
+
+    if glb_data_target is not None:
+        for k in glb_data_target:
+            GLB_DATA[k] = glb_data_target[k]
+
     with fits.open(psf_file) as inpsf_file:
         psf_data = np.copy(inpsf_file[sca_num].data[:, :, :])
     try:
@@ -450,6 +463,84 @@ def draw_stars(
         raise
 
 
+def make_final_image(oversampled_image, offset_file, oversample=6):
+    """
+    Apply a pixel offset model to an oversampled image.
+
+    Parameters
+    ----------
+    oversampled_image : np.ndarray
+        Oversampled simulator image.
+
+    offset_file : str
+        FITS file for the pixel offset cube.
+
+    oversample : int
+        Oversampling factor.
+
+    Returns
+    -------
+    np.ndarray
+        Final 4088 x 4088 detector image.
+    """
+
+    offsets = read_offset_cube(
+        offset_file
+    )  # need to add a pixel offset file for this & the fits cube to work
+
+    image_size = offsets.shape[0]
+
+    # K.D.: I added the import for read_offset_cube from simio.py
+
+    final_image = process_image.process_image(
+        oversampledImage=oversampled_image,
+        offsets=offsets,
+        imageSize=image_size,
+        oversample=oversample,
+    )
+
+    return final_image
+
+
+def trim_cat(cat, ra_ctr, dec_ctr, radius):
+    """
+    Trim the star catalog to include only stars within a specified radius of a given RA/Dec center.
+
+    Parameters
+    ----------
+    cat : astropy.table.Table
+        Star catalog containing RA and Dec columns.
+    ra_ctr : float
+        Right Ascension of the center in degrees.
+    dec_ctr : float
+        Declination of the center in degrees.
+    radius : float
+        Radius in degrees within which to keep stars.
+
+    Returns
+    -------
+    astropy.table.Table
+        Trimmed star catalog containing only stars within the specified radius.
+    """
+
+    ra = cat["ra"]
+    dec = cat["dec"]
+
+    # Calculate angular distance from the center for each star
+    cos_theta = np.sin(np.radians(dec_ctr)) * np.sin(np.radians(dec)) + np.cos(np.radians(dec_ctr)) * np.cos(
+        np.radians(dec)
+    ) * np.cos(np.radians(ra - ra_ctr))
+
+    # Keep stars within the specified radius
+    is_within_radius = cos_theta > np.cos(np.radians(radius))
+
+    for f in cat.keys():  # noqa: SIM118
+        if isinstance(cat[f], np.ndarray):
+            cat[f] = cat[f][is_within_radius]
+
+    return cat
+
+
 # Main Execution
 def run_simulation(config_path):
     """
@@ -468,7 +559,7 @@ def run_simulation(config_path):
     # cat = galsim.Catalog(config['starCat'])
     cat = read_catalog(config["starCat"])
     # cat = cat[:1000] # added this line to only print out first 1000 stars in image
-    nobj = len(cat["ra"])
+    # nobj = len(cat["ra"])
 
     degrees = galsim.AngleUnit(np.pi / 180)
     WCSSTRING = "\n".join(
@@ -551,9 +642,39 @@ def run_simulation(config_path):
     myheader["CRVAL1"] = float(config["raCen"])
     myheader["CRVAL2"] = float(config["decCen"])
     myheader["LONPOLE"] = float(config["LONPOLE"])
+
+    # copy all the keywords
+    sca_num = int(config["SCA"])
+    sca_header = distortion_headers[sca_num - 1]
+    print(config)
+    if not config.get("OLDWCS", False):  # OLDWCS allows us to turn this off (for testing only)
+        for kw in sca_header:
+            config[kw] = sca_header[kw]
+
+    # Add SCA-specific distortion/WCS keywords
+    for key in [
+        "CD1_1",
+        "CD1_2",
+        "CD2_1",
+        "CD2_2",
+        "A_ORDER",
+        "B_ORDER",
+    ]:
+        if key in config:
+            myheader[key] = config[key]
+
+    # Add SIP coefficients
+    for key, value in config.items():
+        if re.match(r"(A|B)_\d_\d", key):
+            myheader[key] = value
+
     mywcs = galsim.AstropyWCS(header=myheader)
     # exit()
     # K.D. : I commented out exit() for right now because it stops the job from executing and running
+
+    cat = trim_cat(cat, config["raCen"], config["decCen"], radius=0.15)
+    nobj = len(cat["ra"])
+    # Trim catalog to stars within 0.15 deg
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
@@ -568,10 +689,10 @@ def run_simulation(config_path):
         cat["is_in_circle"] = is_in_circle
 
     # Telescope exposure/SCA
-    sca_num = int(config["SCA"])
-    eff_area_table = aio.ascii.read(
-        f"Roman_effarea_tables_20240327/Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
+    infile = files("sub_pixel_response.Roman_effarea_tables_20240327").joinpath(
+        f"Roman_effarea_v8_SCA{sca_num:02d}_20240301.ecsv"
     )
+    eff_area_table = aio.ascii.read(infile)
 
     t_exp = 120 * u.s
 
@@ -615,6 +736,7 @@ def run_simulation(config_path):
         y_padding=std_pad,
         psf_file=psf_file,
         filter_name=filter_name,
+        glb_data_target=copy.deepcopy(GLB_DATA),
     )
 
     # Determine number of processes to use
@@ -626,7 +748,9 @@ def run_simulation(config_path):
 
     # Parallel processing and combine results
     with Pool(processes=num_processes) as pool:
-        for result in pool.imap_unordered(multiprocess_stars, range(num_processes)):
+        for result in pool.imap_unordered(
+            multiprocess_stars, range(GLB_DATA["process_h"] * GLB_DATA["process_v"])
+        ):
             if result is not None:
                 out_image[result.bounds] += result
 
