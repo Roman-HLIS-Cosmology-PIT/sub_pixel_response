@@ -672,9 +672,9 @@ def run_simulation(config_path):
     # exit()
     # K.D. : I commented out exit() for right now because it stops the job from executing and running
 
-    nobj = len(
-        trim_cat(cat, config["raCen"], config["decCen"], radius=0.15)["ra"]
-    )  # Trim catalog to stars within 0.15 deg
+    cat = trim_cat(cat, config["raCen"], config["decCen"], radius=0.15)
+    nobj = len(cat["ra"])
+    # Trim catalog to stars within 0.15 deg
 
     # Determine which stars are in the circle
     if not config["randomPos"]:
