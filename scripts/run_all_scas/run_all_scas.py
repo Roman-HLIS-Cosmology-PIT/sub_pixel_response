@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 from sub_pixel_response.imagesim import run_simulation
+from sub_pixel_response.refdistort import distortion_headers
 
 # Note: I want to try writing this again later to see if it can all be done in imagesim.py
 # without taking too much time
@@ -186,7 +187,7 @@ new_config = "example_test.yaml"
 with open(new_config) as f:
     base_config = yaml.safe_load(f)
 
-for sca in [14]:
+for sca in range(1, 19):
     print(f"Running SCA {sca}")
 
     # Getting the rotation matrix R for each SCA
@@ -201,9 +202,6 @@ for sca in [14]:
 
     if alpha < 0:
         alpha = alpha + 2 * np.pi
-
-    if delta < 0:
-        delta = delta + 2 * np.pi
 
     if phi < 0:
         phi = phi + 2 * np.pi
@@ -220,10 +218,17 @@ for sca in [14]:
     config["SCA"] = sca
     config["outFile"] = str(image_dir / f"roman_sca_{sca:02d}.fits")
 
+    # Add SCA-specific distortion/WCS keywords
+    sca_header = distortion_headers[sca - 1]
+
+    if not config.get("OLDWCS", False):
+        for kw in sca_header:
+            config[kw] = sca_header[kw]
+
     # Adding SCA specific rotation angles to the config
-    config["raCen"] = float(alpha)
-    config["decCen"] = float(delta)
-    config["LONPOLE"] = float(phi)
+    config["CRVAL1"] = float(np.degrees(alpha))
+    config["CRVAL2"] = float(np.degrees(delta))
+    config["LONPOLE"] = float(np.degrees(phi))
 
     print("RACEN:", np.degrees(alpha), "DEC_CEN:", np.degrees(delta), "LONPOLE:", np.degrees(phi))
 
@@ -234,23 +239,31 @@ for sca in [14]:
     with open(temp_yaml, "w") as f:
         yaml.safe_dump(config, f)
 
-    print(f"\n===== Running SCA {sca} =====")
-    print(f"Config: {temp_yaml}")
-
-    print(
-        f"SCA {sca}",
-        f"alpha / raCen={np.degrees(alpha):.6f} deg",
-        f"delta / decCen={np.degrees(delta):.6f} deg",
-        f"phi / LONPOLE={np.degrees(phi):.6f} deg",
-    )
-
-    print("\n--- WCS TEST ---")
+    print("\n===== FINAL CONFIG WCS VALUES =====")
+    print("SCA =", config["SCA"])
+    print("CRVAL1 =", config["CRVAL1"])
+    print("CRVAL2 =", config["CRVAL2"])
+    print("LONPOLE =", config["LONPOLE"])
 
     print("\nCD:")
     print("CD1_1 =", config.get("CD1_1"))
     print("CD1_2 =", config.get("CD1_2"))
     print("CD2_1 =", config.get("CD2_1"))
     print("CD2_2 =", config.get("CD2_2"))
+
+    print("\nSIP:")
+    for key in sorted(config):
+        if key.startswith(("A_", "B_")) or key in ("A_ORDER", "B_ORDER"):
+            print(key, "=", config[key])
+
+    print("\n===== SCA ROTATION TEST =====")
+    print("R =")
+    print(R)
+
+    print("\nEuler angles:")
+    print("alpha =", np.degrees(alpha))
+    print("delta =", np.degrees(delta))
+    print("phi   =", np.degrees(phi))
 
     # now we run simulation from imagesim.py, this is all a trial run to see if code works
     run_simulation(str(temp_yaml))
