@@ -5,8 +5,8 @@ import yaml
 from sub_pixel_response.imagesim import run_simulation
 from sub_pixel_response.refdistort import distortion_headers
 
-# Note: I want to try writing this again later to see if it can all be done in imagesim.py
-# without taking too much time
+# run_all_scas.py may need fixed, trying to figure out which alpha, delta, and phi values need to be equal to
+# WFI function arguments
 
 
 def r_sca(sca_number):
@@ -155,7 +155,7 @@ def r_sca(sca_number):
     return R_matrices.get(sca_number)
 
 
-def euler_angle_conversion(R):
+def euler_angle_conversion_w(R):
     """
     Convert a rotation matrix to Euler angles (alpha, delta, phi).
 
@@ -169,101 +169,140 @@ def euler_angle_conversion(R):
     tuple
         Euler angles (alpha, delta, phi) in radians.
     """
-    delta = np.arctan2(R[2, 2], np.hypot(R[2, 0], R[2, 1]))
-    alpha = np.arctan2(R[2, 1], R[2, 0])
-    s = R @ np.array([-np.sin(delta) * np.cos(alpha), -np.sin(delta) * np.sin(alpha), np.cos(delta)])
-    phi = np.arctan2(-s[0], s[1]) + 2 * np.pi
-    return alpha, delta, phi
+    delta_w = np.arctan2(R[2, 2], np.hypot(R[2, 0], R[2, 1]))
+    alpha_w = np.arctan2(R[2, 1], R[2, 0])
+    s = R @ np.array(
+        [-np.sin(delta_w) * np.cos(alpha_w), -np.sin(delta_w) * np.sin(alpha_w), np.cos(delta_w)]
+    )
+    phi_w = np.arctan2(-s[0], s[1])  # Removed 2 + np.pi
+    return alpha_w, delta_w, phi_w
 
 
-image_dir = Path("all_scas")
-config_dir = Path("all_scas_configs")
+def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
+    """
+    Run simulations for all SCAs (1 to 18) using the provided configuration.
 
-image_dir.mkdir(exist_ok=True)
-config_dir.mkdir(exist_ok=True)
+    Parameters:
+    ----------
+    WFI_RACEN : float
+        Right Ascension of the WFI center in degrees.
+    WFI_DECCEN : float
+        Declination of the WFI center in degrees.
+    WFI_LONPOLE : float
+        Longitude of the celestial pole in degrees.
 
-new_config = "example_test.yaml"
+    """
 
-with open(new_config) as f:
-    base_config = yaml.safe_load(f)
+    # Alpha, delta, and phi values for rotation matrix from inertial to SCA frame (in degrees)
+    alpha_s = WFI_RACEN
+    delta_s = WFI_DECCEN
+    phi_s = WFI_LONPOLE
 
-for sca in range(1, 19):
-    print(f"Running SCA {sca}")
+    image_dir = Path("all_scas_run_2")
+    config_dir = Path("all_scas_configs_run_2")
 
-    # Getting the rotation matrix R for each SCA
-    R = r_sca(sca)
+    image_dir.mkdir(exist_ok=True)
+    config_dir.mkdir(exist_ok=True)
 
-    if R is None:
-        print(f"No rotation matrix found for SCA {sca}, skipping.")
-        continue
+    new_config = "example_test.yaml"
 
-    # Converting rotation matrix R to Euler angles (alpha, delta, phi)
-    alpha, delta, phi = euler_angle_conversion(R)
+    with open(new_config) as f:
+        base_config = yaml.safe_load(f)
 
-    if alpha < 0:
-        alpha = alpha + 2 * np.pi
+    for sca in range(1, 19):
+        print(f"Running SCA {sca}")
 
-    if phi < 0:
-        phi = phi + 2 * np.pi
+        # Getting the rotation matrix R for each SCA
+        R = r_sca(sca)
 
-    outfile = image_dir / f"roman_sca_{sca:02d}.fits"
+        if R is None:
+            print(f"No rotation matrix found for SCA {sca}, skipping.")
+            continue
 
-    # Skip SCAs that are already finished
-    if outfile.exists() and outfile.stat().st_size > 0:
-        print(f"{outfile} already exists, skipping SCA {sca}")
-        continue
+        # Converting rotation matrix R to Euler angles (alpha, delta, phi)
+        alpha_w, delta_w, phi_w = euler_angle_conversion_w(R)
+        alpha = alpha_w * alpha_s
+        delta = delta_w * delta_s
+        phi = phi_w * phi_s
 
-    config = base_config.copy()
+        if alpha < 0:
+            alpha = alpha + 2 * np.pi
 
-    config["SCA"] = sca
-    config["outFile"] = str(image_dir / f"roman_sca_{sca:02d}.fits")
+        if delta < 0:
+            delta = delta + 2 * np.pi
 
-    # Add SCA-specific distortion/WCS keywords
-    sca_header = distortion_headers[sca - 1]
+        if phi < 0:
+            phi = phi + 2 * np.pi
 
-    if not config.get("OLDWCS", False):
-        for kw in sca_header:
-            config[kw] = sca_header[kw]
+        outfile = image_dir / f"roman_sca_{sca:02d}_2.fits"
 
-    # Adding SCA specific rotation angles to the config
-    config["CRVAL1"] = float(np.degrees(alpha))
-    config["CRVAL2"] = float(np.degrees(delta))
-    config["LONPOLE"] = float(np.degrees(phi))
+        # Skip SCAs that are already finished
+        if outfile.exists() and outfile.stat().st_size > 0:
+            print(f"{outfile} already exists, skipping SCA {sca}")
+            continue
 
-    print("RACEN:", np.degrees(alpha), "DEC_CEN:", np.degrees(delta), "LONPOLE:", np.degrees(phi))
+        config = base_config.copy()
 
-    print("normalized lonpole:", np.degrees(phi) % 360.0)
+        config["SCA"] = sca
+        config["outFile"] = str(image_dir / f"roman_sca_{sca:02d}_2.fits")
 
-    # write a temporary yaml
-    temp_yaml = config_dir / f"config_sca_{sca:02d}.yaml"
-    with open(temp_yaml, "w") as f:
-        yaml.safe_dump(config, f)
+        # Added WFI_RACEN, WFI_DECCEN, and WFI_LONPOLE to the config
+        # Not sure if the arguments should be in the config, will ask everyone later if this is okay
+        config["WFI_RACEN"] = WFI_RACEN
+        config["WFI_DECCEN"] = WFI_DECCEN
+        config["WFI_LONPOLE"] = WFI_LONPOLE
 
-    print("\n===== FINAL CONFIG WCS VALUES =====")
-    print("SCA =", config["SCA"])
-    print("CRVAL1 =", config["CRVAL1"])
-    print("CRVAL2 =", config["CRVAL2"])
-    print("LONPOLE =", config["LONPOLE"])
+        # Add SCA-specific distortion/WCS keywords
+        sca_header = distortion_headers[sca - 1]
 
-    print("\nCD:")
-    print("CD1_1 =", config.get("CD1_1"))
-    print("CD1_2 =", config.get("CD1_2"))
-    print("CD2_1 =", config.get("CD2_1"))
-    print("CD2_2 =", config.get("CD2_2"))
+        if not config.get("OLDWCS", False):
+            for kw in sca_header:
+                config[kw] = sca_header[kw]
 
-    print("\nSIP:")
-    for key in sorted(config):
-        if key.startswith(("A_", "B_")) or key in ("A_ORDER", "B_ORDER"):
-            print(key, "=", config[key])
+        # Adding SCA specific rotation angles to the config
+        config["CRVAL1"] = float(np.degrees(alpha))
+        config["CRVAL2"] = float(np.degrees(delta))
+        config["LONPOLE"] = float(np.degrees(phi))
 
-    print("\n===== SCA ROTATION TEST =====")
-    print("R =")
-    print(R)
+        print("RACEN:", np.degrees(alpha), "DEC_CEN:", np.degrees(delta), "LONPOLE:", np.degrees(phi))
 
-    print("\nEuler angles:")
-    print("alpha =", np.degrees(alpha))
-    print("delta =", np.degrees(delta))
-    print("phi   =", np.degrees(phi))
+        print("normalized lonpole:", np.degrees(phi) % 360.0)
 
-    # now we run simulation from imagesim.py, this is all a trial run to see if code works
-    run_simulation(str(temp_yaml))
+        # write a temporary yaml
+        temp_yaml = config_dir / f"config_sca_{sca:02d}_2.yaml"
+        with open(temp_yaml, "w") as f:
+            yaml.safe_dump(config, f)
+
+        print("\n===== FINAL CONFIG WCS VALUES =====")
+        print("SCA =", config["SCA"])
+        print("CRVAL1 =", config["CRVAL1"])
+        print("CRVAL2 =", config["CRVAL2"])
+        print("LONPOLE =", config["LONPOLE"])
+
+        print("\nCD:")
+        print("CD1_1 =", config.get("CD1_1"))
+        print("CD1_2 =", config.get("CD1_2"))
+        print("CD2_1 =", config.get("CD2_1"))
+        print("CD2_2 =", config.get("CD2_2"))
+
+        print("\nSIP:")
+        for key in sorted(config):
+            if key.startswith(("A_", "B_")) or key in ("A_ORDER", "B_ORDER"):
+                print(key, "=", config[key])
+
+        print("\n===== SCA ROTATION TEST =====")
+        print("R =")
+        print(R)
+
+        print("\nEuler angles:")
+        print("alpha =", np.degrees(alpha))
+        print("delta =", np.degrees(delta))
+        print("phi   =", np.degrees(phi))
+
+        # now we run simulation from imagesim.py, this is all a trial run to see if code works
+        run_simulation(str(temp_yaml))
+
+
+# This section needs changed to take in arguments from run_all_scas function above
+if __name__ == "__main__":
+    run_all_scas(WFI_RACEN=80.5, WFI_DECCEN=-69.5, WFI_LONPOLE=225)
