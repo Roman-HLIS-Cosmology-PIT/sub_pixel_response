@@ -731,10 +731,9 @@ def run_simulation(config_path):
     # May remove this print statement and sys.stdout.flush() later, but for now it is useful to see if it's
     # written to the right image/file
     out_image.write(config["outFile"])
-    return out_image
     print("Image written to", config["outFile"])
     sys.stdout.flush()
-
+    return out_image
 
 # Main Execution
 if __name__ == "__main__":
