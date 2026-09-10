@@ -735,6 +735,7 @@ def run_simulation(config_path):
     sys.stdout.flush()
     return out_image
 
+
 # Main Execution
 if __name__ == "__main__":
     run_simulation(sys.argv[1])

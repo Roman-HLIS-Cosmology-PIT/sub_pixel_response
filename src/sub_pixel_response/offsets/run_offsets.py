@@ -1,6 +1,6 @@
-import sub_pixel_response.process_image as process_image
-from sub_pixel_response.imagesim import run_simulation
-from sub_pixel_response.simio import read_offset_cube
+from .. import process_image
+from ..imagesim import run_simulation
+from ..simio import read_offset_cube
 
 
 def make_final_image(oversampled_image, offset_file, oversample=6):
