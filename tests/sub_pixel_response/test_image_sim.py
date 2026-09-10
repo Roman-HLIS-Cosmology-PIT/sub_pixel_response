@@ -22,13 +22,13 @@ from sub_pixel_response.imagesim import (
     draw_stars,
     j_location,
     l_poly_array,
-    make_final_image,
     print_report,
     run_simulation,
     sed_bb,
     smooth_and_pad,
     transform_pos,
 )
+from sub_pixel_response.offsets.run_offsets import make_final_image
 from sub_pixel_response.utils.randomutils import get_randpts
 
 # Important constants that are needed to run these unit tests

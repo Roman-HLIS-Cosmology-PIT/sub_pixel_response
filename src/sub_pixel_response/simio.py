@@ -127,5 +127,7 @@ def read_offset_cube(file_path):
 
     with fits.open(file_path) as hdul:
         offsets = np.copy(hdul[0].data)
+    # Transpose to have the expected shape for offset maps
+    offsets = np.transpose(offsets, (1, 2, 0))
 
     return offsets
