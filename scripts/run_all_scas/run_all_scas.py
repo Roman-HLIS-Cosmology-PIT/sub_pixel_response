@@ -198,8 +198,8 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
     delta_s = WFI_DECCEN
     phi_s = WFI_LONPOLE
 
-    image_dir = Path("all_scas_run_2")
-    config_dir = Path("all_scas_configs_run_2")
+    image_dir = Path("all_scas")
+    config_dir = Path("all_scas_configs")
 
     image_dir.mkdir(exist_ok=True)
     config_dir.mkdir(exist_ok=True)
@@ -221,9 +221,9 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
 
         # Converting rotation matrix R to Euler angles (alpha, delta, phi)
         alpha_w, delta_w, phi_w = euler_angle_conversion_w(R)
-        alpha = alpha_w * alpha_s
-        delta = delta_w * delta_s
-        phi = phi_w * phi_s
+        alpha = alpha_w + alpha_s
+        delta = delta_w + delta_s
+        phi = phi_w + phi_s
 
         if alpha < 0:
             alpha = alpha + 2 * np.pi
@@ -234,7 +234,7 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
         if phi < 0:
             phi = phi + 2 * np.pi
 
-        outfile = image_dir / f"roman_sca_{sca:02d}_2.fits"
+        outfile = image_dir / f"roman_sca_{sca:02d}.fits"
 
         # Skip SCAs that are already finished
         if outfile.exists() and outfile.stat().st_size > 0:
@@ -244,7 +244,7 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
         config = base_config.copy()
 
         config["SCA"] = sca
-        config["outFile"] = str(image_dir / f"roman_sca_{sca:02d}_2.fits")
+        config["outFile"] = str(image_dir / f"roman_sca_{sca:02d}.fits")
 
         # Added WFI_RACEN, WFI_DECCEN, and WFI_LONPOLE to the config
         # Not sure if the arguments should be in the config, will ask everyone later if this is okay
@@ -269,7 +269,7 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
         print("normalized lonpole:", np.degrees(phi) % 360.0)
 
         # write a temporary yaml
-        temp_yaml = config_dir / f"config_sca_{sca:02d}_2.yaml"
+        temp_yaml = config_dir / f"config_sca_{sca:02d}.yaml"
         with open(temp_yaml, "w") as f:
             yaml.safe_dump(config, f)
 
