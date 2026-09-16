@@ -4,3 +4,4 @@ galsim
 pandas
 scipy
 furry-parakeet
+fitsio

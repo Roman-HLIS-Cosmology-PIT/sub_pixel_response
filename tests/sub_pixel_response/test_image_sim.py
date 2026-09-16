@@ -22,13 +22,13 @@ from sub_pixel_response.imagesim import (
     draw_stars,
     j_location,
     l_poly_array,
-    make_final_image,
     print_report,
     run_simulation,
     sed_bb,
     smooth_and_pad,
     transform_pos,
 )
+from sub_pixel_response.offsets.run_offsets import make_final_image
 from sub_pixel_response.utils.randomutils import get_randpts
 
 # Important constants that are needed to run these unit tests
@@ -378,7 +378,7 @@ def test_make_final_image(tmp_path):
         np.array([1.0, 0.0, 0.0, 1.0 / 12.0, 0.0, 1.0 / 12.0]), imageSize=test_ns
     )
     offset_file = str(tmp_path) + "/o.fits"
-    fits.PrimaryHDU(offsets).writeto(offset_file, overwrite=True)
+    fits.PrimaryHDU(np.transpose(offsets, (2, 0, 1))).writeto(offset_file, overwrite=True)
 
     # Error targets
     desired_errs = [0.004, 0.0003, 2e-5, 2e-6]

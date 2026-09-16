@@ -19,8 +19,7 @@ from furry_parakeet.pyimcom_croutines import gridG4460C
 from scipy.signal.windows import tukey
 from scipy.special import legendre
 
-from sub_pixel_response import process_image
-from sub_pixel_response.simio import read_catalog, read_config, read_offset_cube
+from sub_pixel_response.simio import read_catalog, read_config
 from sub_pixel_response.utils.trapz import trapz
 
 from .refdistort import distortion_headers
@@ -463,45 +462,6 @@ def draw_stars(
         raise
 
 
-def make_final_image(oversampled_image, offset_file, oversample=6):
-    """
-    Apply a pixel offset model to an oversampled image.
-
-    Parameters
-    ----------
-    oversampled_image : np.ndarray
-        Oversampled simulator image.
-
-    offset_file : str
-        FITS file for the pixel offset cube.
-
-    oversample : int
-        Oversampling factor.
-
-    Returns
-    -------
-    np.ndarray
-        Final 4088 x 4088 detector image.
-    """
-
-    offsets = read_offset_cube(
-        offset_file
-    )  # need to add a pixel offset file for this & the fits cube to work
-
-    image_size = offsets.shape[0]
-
-    # K.D.: I added the import for read_offset_cube from simio.py
-
-    final_image = process_image.process_image(
-        oversampledImage=oversampled_image,
-        offsets=offsets,
-        imageSize=image_size,
-        oversample=oversample,
-    )
-
-    return final_image
-
-
 def trim_cat(cat, ra_ctr, dec_ctr, radius):
     """
     Trim the star catalog to include only stars within a specified radius of a given RA/Dec center.
@@ -773,6 +733,7 @@ def run_simulation(config_path):
     out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
+    return out_image
 
 
 # Main Execution
