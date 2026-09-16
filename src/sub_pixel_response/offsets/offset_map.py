@@ -6,7 +6,7 @@ from fitsio import FITSHDR
 def make_im_offset():
     """Makes toy offsets."""
 
-    nside = 4096
+    nside = 4088
     n_perturbations = 6
 
     offset_pattern = 1
