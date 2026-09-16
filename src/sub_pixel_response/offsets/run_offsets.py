@@ -10,10 +10,15 @@ def make_final_image(oversampled_image, offset_file, oversample=6):
     Parameters
     ----------
     oversampled_image : np.ndarray
-        Oversampled simulator image.
+        Oversampled simulator image. The image dimensions are
+        imageSize * oversample. imageSize matches the
+        detector dimensions represented by the offset map.
 
     offset_file : str
-        FITS file containing the pixel offset cube.
+        FITS file containing the pixel offset cube. The FITS data
+        are expected to have shape (6, y, x), with the six
+        moment components in the first axis. read_offset_cube
+        transposes this to (y, x, 6) for use by process_image.
 
     oversample : int
         Oversampling factor.
@@ -21,22 +26,21 @@ def make_final_image(oversampled_image, offset_file, oversample=6):
     Returns
     -------
     np.ndarray
-        Final 4088 x 4088 detector image.
+        Detector image with the same detector dimensions represented
+        by the offset map.
     """
-
+    # FITS order: (6, y, x)
+    # In-memory order: (y, x, 6)
     offsets = read_offset_cube(offset_file)
 
     image_size = offsets.shape[0]
 
-    detector_image = process_image.process_image(
+    final_image = process_image.process_image(
         oversampledImage=oversampled_image,
         offsets=offsets,
         imageSize=image_size,
         oversample=oversample,
     )
-
-    # Remove the 4-pixel reference-pixel border
-    final_image = detector_image[4:-4, 4:-4]
 
     return final_image
 
@@ -55,7 +59,8 @@ def run_offset_pipeline(config_path, offset_file):
     return final_image
 
     # if __name__ == "__main__":
-    config_path = "config.yaml"
-    offset_file = "offsets/test_offset_map.fits"
+    # config_path = "config.yaml"
+    # offset_file = "offsets/test_offset_map.fits"
 
-    final_image = run_offset_pipeline(config_path, offset_file)
+
+# final_image = run_offset_pipeline(config_path, offset_file)

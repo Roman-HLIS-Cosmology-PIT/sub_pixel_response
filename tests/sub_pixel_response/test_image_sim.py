@@ -378,7 +378,7 @@ def test_make_final_image(tmp_path):
         np.array([1.0, 0.0, 0.0, 1.0 / 12.0, 0.0, 1.0 / 12.0]), imageSize=test_ns
     )
     offset_file = str(tmp_path) + "/o.fits"
-    fits.PrimaryHDU(offsets).writeto(offset_file, overwrite=True)
+    fits.PrimaryHDU(np.transpose(offsets, (2, 0, 1))).writeto(offset_file, overwrite=True)
 
     # Error targets
     desired_errs = [0.004, 0.0003, 2e-5, 2e-6]
