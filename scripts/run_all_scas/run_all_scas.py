@@ -155,6 +155,43 @@ def r_sca(sca_number):
     return R_matrices.get(sca_number)
 
 
+def r_wfi(alpha_i, delta_i, phi_i):
+    """
+    Get the rotation matrix going from the inertial to the WFI frame.'
+
+    Parameters:
+    ----------
+    alpha_i : float
+        Right Ascension of the inertial frame in radians.
+    delta_i : float
+        Declination of the inertial frame in radians.
+    phi_i : float
+        Longitude of the celestial pole in radians.
+
+    Returns
+    -------
+    np.ndarray
+        3x3 rotation matrix.
+    """
+    r_inertia_to_wfi = np.array(
+        [
+            [
+                np.sin(alpha_i) * np.cos(phi_i) - np.sin(delta_i) * np.cos(alpha_i) * np.sin(phi_i),
+                -np.cos(alpha_i) * np.cos(phi_i) - np.sin(delta_i) * np.sin(alpha_i) * np.sin(phi_i),
+                np.cos(delta_i) * np.sin(phi_i),
+            ],
+            [
+                np.sin(delta_i) * np.cos(alpha_i) * np.cos(phi_i) + np.sin(alpha_i) * np.sin(phi_i),
+                np.sin(delta_i) * np.sin(alpha_i) * np.cos(phi_i) - np.cos(alpha_i) * np.sin(phi_i),
+                -np.cos(delta_i) * np.cos(phi_i),
+            ],
+            [np.cos(delta_i) * np.cos(alpha_i), np.cos(delta_i) * np.sin(alpha_i), np.sin(delta_i)],
+        ]
+    )
+
+    return r_inertia_to_wfi
+
+
 def euler_angle_conversion_w(R):
     """
     Convert a rotation matrix to Euler angles (alpha, delta, phi).
@@ -190,13 +227,12 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
         Declination of the WFI center in degrees.
     WFI_LONPOLE : float
         Longitude of the celestial pole in degrees.
-
     """
 
     # Alpha, delta, and phi values for rotation matrix from inertial to SCA frame (in degrees)
-    alpha_s = WFI_RACEN
-    delta_s = WFI_DECCEN
-    phi_s = WFI_LONPOLE
+    alpha_i = WFI_RACEN
+    delta_i = WFI_DECCEN
+    phi_i = WFI_LONPOLE
 
     image_dir = Path("all_scas")
     config_dir = Path("all_scas_configs")
@@ -220,10 +256,9 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
             continue
 
         # Converting rotation matrix R to Euler angles (alpha, delta, phi)
-        alpha_w, delta_w, phi_w = euler_angle_conversion_w(R)
-        alpha = alpha_w + alpha_s
-        delta = delta_w + delta_s
-        phi = phi_w + phi_s
+        matrix_conversion = euler_angle_conversion_w(R @ r_wfi(alpha_i, delta_i, phi_i))
+
+        alpha, delta, phi = matrix_conversion
 
         if alpha < 0:
             alpha = alpha + 2 * np.pi
