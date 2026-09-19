@@ -206,5 +206,5 @@ def euler_angle_conversion_w(R):
     s = R @ np.array(
         [-np.sin(delta_w) * np.cos(alpha_w), -np.sin(delta_w) * np.sin(alpha_w), np.cos(delta_w)]
     )
-    phi_w = np.arctan2(-s[0], s[1])  # Removed 2 + np.pi
+    phi_w = np.arctan2(s[0], -s[1])  # Removed 2 + np.pi
     return alpha_w, delta_w, phi_w
