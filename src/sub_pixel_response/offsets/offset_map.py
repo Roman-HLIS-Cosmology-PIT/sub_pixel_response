@@ -3,13 +3,22 @@ import numpy as np
 from fitsio import FITSHDR
 
 
-def make_im_offset():
-    """Makes toy offsets."""
+def make_im_offset(offset_pattern=1):
+    """Makes toy offsets.
+
+    Parameters
+    ----------
+    offset_pattern : int, optional
+        Which pattern to generate.
+
+    Returns
+    -------
+    np.ndarray of float
+        A toy offset map. Shape (6, 4088, 4088).
+    """
 
     nside = 4088
     n_perturbations = 6
-
-    offset_pattern = 1
 
     block_size = 64
     offset_value = 0.02
