@@ -58,9 +58,6 @@ def run_all_scas(WFI_RACEN, WFI_DECCEN, WFI_LONPOLE):
         if alpha < 0:
             alpha = alpha + 2 * np.pi
 
-        if delta < 0:
-            delta = delta + 2 * np.pi
-
         if phi < 0:
             phi = phi + 2 * np.pi
 
