@@ -28,7 +28,7 @@ from sub_pixel_response.imagesim import (
     smooth_and_pad,
     transform_pos,
 )
-from sub_pixel_response.offsets.run_offsets import make_final_image
+from sub_pixel_response.offsets.run_offsets import make_final_image, run_offset_pipeline
 from sub_pixel_response.utils.randomutils import get_randpts
 
 # Important constants that are needed to run these unit tests
@@ -406,6 +406,65 @@ def test_make_final_image(tmp_path):
         print(u, v, err)
 
         assert err < desired_errs[j]
+
+
+def test_run_offset_pipeline(tmp_path, get_psf_file):
+    """Test the full simulation and pixel-offset pipeline."""
+
+    tmp_dir = str(tmp_path)
+    psf_file = get_psf_file
+
+    rs = RandomState(22)
+
+    # test values for WCS RA and Dec for generating random points
+    wcs_ra = 80.5
+    wcs_dec = -69.5
+    pts_ra, pts_dec = get_randpts(wcs_ra, wcs_dec, 0.1, 2000, rng=rs)
+    rand_cat = {"ra": pts_ra, "dec": pts_dec, "mag_H": rs.uniform(14, 20, 2000)}
+
+    # star catalog.
+    star_cat = tmp_dir + "/starcat.fits"
+    hdu = fits.BinTableHDU.from_columns(
+        [
+            fits.Column(name="RAJ2000", format="D", array=rand_cat["ra"]),
+            fits.Column(name="DECJ2000", format="D", array=rand_cat["dec"]),
+            fits.Column(name="H", format="E", array=rand_cat["mag_H"]),
+        ]
+    )
+    fits.HDUList([fits.PrimaryHDU(), hdu]).writeto(star_cat, overwrite=True)
+
+    config_file = tmp_dir + "/config.yaml"
+    output_file = tmp_dir + "/testimage.fits"
+
+    with open(config_file, "w") as f:
+        f.write("---\n")
+        f.write("raCen: 80.5\n")
+        f.write("decCen: -69.49\n")
+        f.write(f"starCat: {star_cat}\n")
+        f.write(f"PSFFILE: {psf_file}\n")
+        f.write("LONPOLE: 225\n")
+        f.write("SCA: 14\n")
+        f.write("FILTER: F158\n")
+        f.write("randomPos: false\n")
+        f.write("blackBody: true\n")
+        f.write(f"outFile: {output_file}\n")
+        f.write("OLDWCS: true\n")
+        f.write("...\n")
+
+    offsets = process_image.generate_offset_array(
+        np.array([1.0, 0.0, 0.0, 1.0 / 12.0, 0.0, 1.0 / 12.0]), imageSize=4088
+    )
+
+    offset_file = tmp_dir + "/offsets.fits"
+
+    # offset FITS files use (moment, y, x) ordering
+    fits.PrimaryHDU(np.transpose(offsets, (2, 0, 1))).writeto(offset_file, overwrite=True)
+
+    with GlobalContext({"nside": 4088, "furry_parakeet": True}):
+        final_image = run_offset_pipeline(config_file, offset_file)
+
+    # The final science image should be 4088 x 4088.
+    assert final_image.shape == (4088, 4088)
 
 
 def test_report():
