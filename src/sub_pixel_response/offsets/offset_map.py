@@ -50,11 +50,6 @@ def make_im_offset(offset_pattern=1):
                         x : x + block_size,
                     ] = -offset_value
 
-    # Reference pixels (zero in this first map)
-    im_offset[:, :, :4] = 0.0
-    im_offset[:, :, -4:] = 0.0
-    im_offset[:, :4, :] = 0.0
-    im_offset[:, -4:, :] = 0.0
     return im_offset
 
 
