@@ -727,7 +727,9 @@ def run_simulation(config_path):
         sys.stdout.flush()"""
 
     # out_image = process_func(0)
-    out_image = out_image[std_pad:-std_pad, std_pad:-std_pad]
+    b = out_image.bounds
+    newbounds = galsim.BoundsI(b.xmin + std_pad, b.xmax - std_pad, b.ymin + std_pad, b.ymax - std_pad)
+    out_image = out_image[newbounds]
     # May remove this print statement and sys.stdout.flush() later, but for now it is useful to see if it's
     # written to the right image/file
     out_image.write(config["outFile"])
