@@ -362,8 +362,8 @@ def test_run_simulation(tmp_path, get_psf_file):
     with GlobalContext({"nside": 512, "furry_parakeet": True}):
         run_simulation(tmp_dir + "/config.yaml")
     with fits.open(output_target) as f:
-        assert np.shape(f[0].data) == (3120, 3120)
-        assert 3.5e4 < f[0].data[2742, 387] < 4.0e4  # check there's a star there
+        assert np.shape(f[0].data) == (3072, 3072)
+        assert 3.5e4 < f[0].data[2718, 363] < 4.0e4  # check there's a star there
 
 
 def test_make_final_image(tmp_path):
