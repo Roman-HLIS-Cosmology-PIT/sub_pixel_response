@@ -738,7 +738,7 @@ def run_simulation(config_path):
     # out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
-    return out_image
+    return out_image, myheader
 
 
 # Main Execution

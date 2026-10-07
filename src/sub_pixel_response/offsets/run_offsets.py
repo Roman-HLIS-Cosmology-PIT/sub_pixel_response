@@ -51,12 +51,12 @@ def run_offset_pipeline(config_path, offset_file):
     """
 
     # Run simulation from imagesim.py
-    oversampled_image = run_simulation(str(config_path))
+    oversampled_image, myheader = run_simulation(str(config_path))
 
     # Apply offsets and create final image
     final_image = make_final_image(oversampled_image.array, offset_file)
 
-    return final_image
+    return final_image, myheader
 
     # if __name__ == "__main__":
     # config_path = "config.yaml"
