@@ -1,6 +1,6 @@
 # config.yaml
-raCen: 80.511         # Right Ascension center in degrees (should be the same as the one in besancon)
-decCen: -69.511        # Declination center in degrees (should be the same as the one in besancon)
+raCen: 80.5         # Right Ascension center in degrees (should be the same as the one in besancon)
+decCen: -69.5        # Declination center in degrees (should be the same as the one in besancon)
 starCat: /users/PAS2340/karadiludovico/star_catalogs/COMPREHENSIVE_2017p38.XYVHJKLM_OBS_EST_W_RDF  # Path to star catalog
 PSFFILE: /users/PAS2340/karadiludovico/fits_files/psf_poly.fits # Path to PSF file
 LONPOLE: 225         # Rotation, changes orientation of image (default 180)
