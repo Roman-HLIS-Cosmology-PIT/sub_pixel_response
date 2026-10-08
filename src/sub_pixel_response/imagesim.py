@@ -730,12 +730,15 @@ def run_simulation(config_path):
     b = out_image.bounds
     newbounds = galsim.BoundsI(b.xmin + std_pad, b.xmax - std_pad, b.ymin + std_pad, b.ymax - std_pad)
     out_image = out_image[newbounds]
+    phdu = fits.PrimaryHDU()
+    scihdu = fits.ImageHDU(out_image, name="SCI", header=myheader)
+    fits.HDUList([phdu, scihdu]).writeto(config["outFile"], overwrite=True)
     # May remove this print statement and sys.stdout.flush() later, but for now it is useful to see if it's
     # written to the right image/file
-    out_image.write(config["outFile"])
+    # out_image.write(config["outFile"])
     print("Image written to", config["outFile"])
     sys.stdout.flush()
-    return out_image
+    return out_image, myheader
 
 
 # Main Execution

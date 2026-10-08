@@ -1,3 +1,7 @@
+import sys
+
+from astropy.io import fits
+
 from .. import process_image
 from ..imagesim import run_simulation
 from ..simio import read_offset_cube
@@ -45,22 +49,26 @@ def make_final_image(oversampled_image, offset_file, oversample=6):
     return final_image
 
 
-def run_offset_pipeline(config_path, offset_file):
+def run_offset_pipeline(config_path, offset_file, output_file):
     """
     Run the simulation and then apply the pixel offset model.
     """
 
     # Run simulation from imagesim.py
-    oversampled_image = run_simulation(str(config_path))
+    oversampled_image, myheader = run_simulation(str(config_path))
 
     # Apply offsets and create final image
     final_image = make_final_image(oversampled_image.array, offset_file)
 
-    return final_image
+    phdu = fits.PrimaryHDU()
+    scihdu = fits.ImageHDU(final_image, name="SCI", header=myheader)
+    fits.HDUList([phdu, scihdu]).writeto(output_file, overwrite=True)
+    print("Final image written to", output_file)
+    sys.stdout.flush()
 
-    # if __name__ == "__main__":
-    # config_path = "config.yaml"
-    # offset_file = "offsets/test_offset_map.fits"
+    return final_image, myheader
 
 
-# final_image = run_offset_pipeline(config_path, offset_file)
+# Main Execution
+if __name__ == "__main__":
+    run_offset_pipeline(sys.argv[1], sys.argv[2], sys.argv[3])
