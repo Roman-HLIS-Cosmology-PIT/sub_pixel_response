@@ -4,8 +4,8 @@
 #SBATCH --time=96:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
-#SBATCH --output=testScriptImageSim_8_17.out
-#SBATCH --error=testScriptImageSim_8_17.err
+#SBATCH --output=testScriptImageSim_10_7_2.out
+#SBATCH --error=testScriptImageSim_10_7_2.err
 cd $SLURM_SUBMIT_DIR
 python -m sub_pixel_response.imagesim example_test.yaml 
 # python optimizedStarSim.py optimizedConfig.yaml

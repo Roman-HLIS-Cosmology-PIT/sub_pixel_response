@@ -1,3 +1,5 @@
+import os
+
 import fitsio
 import numpy as np
 from fitsio import FITSHDR
@@ -56,6 +58,11 @@ def make_im_offset(offset_pattern=1):
 if __name__ == "__main__":
     # Offset cube
     hdr = FITSHDR()
-    outfile = "offsets/test_offset_map.fits"
+    outfile = "src/sub_pixel_response/offsets/test_offset_map.fits"
     im_offset = make_im_offset()
-    fitsio.write(outfile, im_offset, header=hdr, clobber=True)
+    fitsio.write(str(outfile), im_offset, header=hdr, clobber=True)
+
+    print(f"Offset map saved to: {os.path.abspath(outfile)}")
+    print(f"Shape: {im_offset.shape}")
+    print(f"Data type: {im_offset.dtype}")
+    print(f"File exists: {os.path.exists(outfile)}")
