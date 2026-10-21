@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 from astropy.io import fits
 
@@ -60,10 +61,12 @@ def run_offset_pipeline(config_path, offset_file, output_file):
     # Apply offsets and create final image
     final_image = make_final_image(oversampled_image.array, offset_file)
 
+    output_path = Path(output_file)
+
     phdu = fits.PrimaryHDU()
     scihdu = fits.ImageHDU(final_image, name="SCI", header=myheader)
-    fits.HDUList([phdu, scihdu]).writeto(output_file, overwrite=True)
-    print("Final image written to", output_file)
+    fits.HDUList([phdu, scihdu]).writeto(output_path, overwrite=True)
+    print("Final image written to", output_path)
     sys.stdout.flush()
 
     return final_image, myheader
