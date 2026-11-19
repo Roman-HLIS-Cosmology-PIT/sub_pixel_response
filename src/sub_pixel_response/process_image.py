@@ -123,7 +123,7 @@ def compute_pixel_weights(offsets, oversam=6):
     return weight_array  # This will be (4096, 4096, 6, 6) as desired
 
 
-def generate_offset_array(offsets, imageSize=4096, nmoment=6):
+def generate_offset_array(offsets, imageSize=4088, nmoment=6):
     """
     Expands a smaller offset array into a full image-sized offset array.
 
@@ -147,7 +147,7 @@ def generate_offset_array(offsets, imageSize=4096, nmoment=6):
     return offsetArray
 
 
-def process_image(oversampledImage, offsets, imageSize=4096, oversample=6):
+def process_image(oversampledImage, offsets, imageSize=4088, oversample=6):
     """
     Downsamples an oversampled image using the computed subpixel weights.
 

@@ -1,3 +1,5 @@
+import os
+
 import fitsio
 import numpy as np
 from fitsio import FITSHDR
@@ -31,6 +33,12 @@ def make_im_offset(offset_pattern=1):
 
     # Checkerboard pattern (something simple and recognizable to start)
     if offset_pattern == 1:
+        im_offset[0, :, :] = 1
+        im_offset[1, :, :] = 0
+        im_offset[2, :, :] = 0
+        im_offset[3, :, :] = 0
+        im_offset[4, :, :] = 1 / 12
+        im_offset[5, :, :] = 1 / 12
         for y in range(0, nside, block_size):
             for x in range(0, nside, block_size):
                 block_y = y // block_size
@@ -38,14 +46,14 @@ def make_im_offset(offset_pattern=1):
 
                 if (block_x + block_y) % 2 == 0:
                     im_offset[
-                        0,
+                        1,
                         y : y + block_size,
                         x : x + block_size,
                     ] = offset_value
 
                 else:
                     im_offset[
-                        0,
+                        1,
                         y : y + block_size,
                         x : x + block_size,
                     ] = -offset_value
@@ -56,6 +64,11 @@ def make_im_offset(offset_pattern=1):
 if __name__ == "__main__":
     # Offset cube
     hdr = FITSHDR()
-    outfile = "offsets/test_offset_map.fits"
+    outfile = "test_offset_map.fits"
     im_offset = make_im_offset()
-    fitsio.write(outfile, im_offset, header=hdr, clobber=True)
+    fitsio.write(str(outfile), im_offset, header=hdr, clobber=True)
+
+    print(f"Offset map saved to: {os.path.abspath(outfile)}")
+    print(f"Shape: {im_offset.shape}")
+    print(f"Data type: {im_offset.dtype}")
+    print(f"File exists: {os.path.exists(outfile)}")
